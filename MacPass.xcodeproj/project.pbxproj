@@ -170,8 +170,8 @@
 		4C7B63771C0CB51F00D7038C /* TTTStringTransformers.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C7B63701C0CB51F00D7038C /* TTTStringTransformers.m */; };
 		4C7B637C1C0CB55600D7038C /* KeePassKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C7B63791C0CB55600D7038C /* KeePassKit.framework */; };
 		4C7B637D1C0CB55600D7038C /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C7B637A1C0CB55600D7038C /* Sparkle.framework */; };
-		4C7B637F1C0CB57300D7038C /* KeePassKit.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4C7B63791C0CB55600D7038C /* KeePassKit.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4C7B63801C0CB57300D7038C /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4C7B637A1C0CB55600D7038C /* Sparkle.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C7B637F1C0CB57300D7038C /* KeePassKit.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4C7B63791C0CB55600D7038C /* KeePassKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		4C7B63801C0CB57300D7038C /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4C7B637A1C0CB55600D7038C /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4C7BD07619FE94C900C7AA5C /* MacPassImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4C7BD07519FE94C900C7AA5C /* MacPassImages.xcassets */; };
 		4C7F8B681A10B68400CCB83D /* WelcomeWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 4C7F8B6A1A10B68400CCB83D /* WelcomeWindow.xib */; };
 		4C80304A1E2FBAA300133E4C /* MPTestKeyMapper.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C8030491E2FBAA300133E4C /* MPTestKeyMapper.m */; };
@@ -208,7 +208,7 @@
 		4CC0D2D117974A5A000B4BDA /* MPAttachmentTableViewDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CC0D2D017974A5A000B4BDA /* MPAttachmentTableViewDelegate.m */; };
 		4CC281891C0F675B00B9174D /* HNHUi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4CC281881C0F675B00B9174D /* HNHUi.framework */; };
 		4CC6DB7A17D23719002C6091 /* KPKNode+IconImage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CC6DB7917D23719002C6091 /* KPKNode+IconImage.m */; };
-		4CCA8E9B18D91ED9001A6754 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4CCA8E9A18D91ED9001A6754 /* Quartz.framework */; };
+		4CCA8E9B18D91ED9001A6754 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4CCA8E9A18D91ED9001A6754 /* Quartz.framework */; settings = {ATTRIBUTES = (Required, ); }; };
 		4CCCE8011D75CA48006AA951 /* MPArrayController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CCCE8001D75CA48006AA951 /* MPArrayController.m */; };
 		4CCEDE2A179F203B008402BE /* MPOutlineView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CCEDE29179F203B008402BE /* MPOutlineView.m */; };
 		4CCEDE2E179F213B008402BE /* MPNotifications.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CCEDE2D179F213B008402BE /* MPNotifications.m */; };
@@ -218,7 +218,7 @@
 		4CD034AC1BFE113B003C002C /* MPPluginHost.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CD034A91BFE113B003C002C /* MPPluginHost.m */; };
 		4CD2B9061849424B0051B395 /* MPAutotypeContext.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CD2B9051849424B0051B395 /* MPAutotypeContext.m */; };
 		4CD5D705177A5F3300100649 /* MPDatabaseSettingsWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CD5D704177A5F3300100649 /* MPDatabaseSettingsWindowController.m */; };
-		4CD60C131C104AD4005BE5F8 /* HNHUi.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4CC281881C0F675B00B9174D /* HNHUi.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4CD60C131C104AD4005BE5F8 /* HNHUi.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4CC281881C0F675B00B9174D /* HNHUi.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4CD7223B17A7CB0700F5A1E1 /* MPWorkflowSettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CD7223A17A7CB0700F5A1E1 /* MPWorkflowSettingsController.m */; };
 		4CD78ABC16D155FF00768A1D /* 07_NotepadTemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 4CD78AB716D155FF00768A1D /* 07_NotepadTemplate.pdf */; };
 		4CD78ABD16D155FF00768A1D /* 08_SocketTemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 4CD78AB816D155FF00768A1D /* 08_SocketTemplate.pdf */; };
@@ -1510,7 +1510,8 @@
 				ORGANIZATIONNAME = "HicknHack Software GmbH";
 				TargetAttributes = {
 					4C77E36115B84A240093A587 = {
-						DevelopmentTeam = 55SM4L4Z97;
+						DevelopmentTeam = 6D9KAK678M;
+						ProvisioningStyle = Manual;
 					};
 				};
 			};
@@ -2310,8 +2311,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = MacPassAppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=*]" = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 6D9KAK678M;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Carthage/Build/Mac",
@@ -2324,9 +2327,10 @@
 					"-lxml2",
 					"-Wl,-rpath,@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.hicknhacksoftware.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.intraceptual.MacPass;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				STRIP_STYLE = debugging;
 				WRAPPER_EXTENSION = app;
@@ -2339,8 +2343,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = MacPassAppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=*]" = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 6D9KAK678M;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Carthage/Build/Mac",
@@ -2354,9 +2360,10 @@
 					"-lxml2",
 					"-Wl,-rpath,@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.hicknhacksoftware.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.intraceptual.MacPass;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				STRIP_STYLE = debugging;
 				WRAPPER_EXTENSION = app;
