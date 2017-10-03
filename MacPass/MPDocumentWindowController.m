@@ -5,6 +5,20 @@
 //  Created by Michael Starke on 24.07.12.
 //  Copyright (c) 2012 HicknHack Software GmbH. All rights reserved.
 //
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
 
 #import "MPDocumentWindowController.h"
 #import "MPActionHelper.h"
@@ -196,9 +210,10 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 #pragma mark Actions
 - (void)saveDocument:(id)sender {
   MPDocument *document = self.document;
+  /* did we open as legacy ?
+  
   NSString *fileType = document.fileType;
-  /* we did open as legacy */
-  if([fileType isEqualToString:MPKdbDocumentUTI]) {
+  if([fileType isEqualToString:MPKdbxDocumentUTI]) {
     if(document.tree.minimumVersion.format != KPKDatabaseFormatKdb) {
       NSAlert *alert = [[NSAlert alloc] init];
       alert.alertStyle = NSWarningAlertStyle;
@@ -208,17 +223,16 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
       [alert addButtonWithTitle:NSLocalizedString(@"SAVE_LOSSY", "Save lossy")];
       [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_FORMAT", "")];
       [alert addButtonWithTitle:NSLocalizedString(@"CANCEL", "Cancel")];
-      __weak MPDocumentWindowController *welf = self;
-      [alert beginSheetModalForWindow:[welf.document windowForSheet] completionHandler:^(NSModalResponse returnCode) {
+      [alert beginSheetModalForWindow:((NSDocument *)self.document).windowForSheet completionHandler:^(NSModalResponse returnCode) {
         switch(returnCode) {
           case NSAlertFirstButtonReturn:
-            /* Save lossy */
-            [welf.document saveDocument:nil];
+            // save lossy
+            [self.document saveDocument:nil];
             return;
             
           case NSAlertSecondButtonReturn:
             [alert.window orderOut:nil];
-            [welf.document saveDocumentAs:nil];
+            [self.document saveDocumentAs:nil];
             return;
             
           case NSAlertThirdButtonReturn:
@@ -229,21 +243,19 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
       return;
     }
   }
-  else if(!document.compositeKey) {
-    __weak MPDocument *weakDocument = self.document;
-    
+  else*/
+  if(!document.compositeKey) {
     [self editPasswordWithCompetionHandler:^(NSInteger result) {
       if(result == NSModalResponseOK) {
-        [weakDocument saveDocument:sender];
+        [self saveDocument:sender];
       }
     }];
     return;
   }
   else if(document.shouldEnforcePasswordChange) {
-    __weak MPDocument *weakDocument = [self document];
     [self editPasswordWithCompetionHandler:^(NSInteger result) {
       if(result == NSModalResponseOK) {
-        [weakDocument saveDocument:sender];
+        [self saveDocument:sender];
       }
     }];
     [self _presentPasswordIntervalAlerts];
@@ -259,10 +271,9 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
     return;
   }
   /* we need to make sure that a password is set */
-  __weak MPDocument *weakDocument = self.document;
   [self editPasswordWithCompetionHandler:^(NSInteger result) {
     if(result == NSModalResponseOK) {
-      [weakDocument saveDocumentAs:sender];
+      [self saveDocumentAs:sender];
     }
   }];
 }
@@ -302,10 +313,11 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   openPanel.allowsMultipleSelection = NO;
   openPanel.canChooseDirectories = NO;
   openPanel.canChooseFiles = YES;
+  openPanel.message = NSLocalizedString(@"SELECT_FILE_TO_MERGE", @"Message for the dialog to open a file for merge");
   //openPanel.allowedFileTypes = @[(id)kUTTypeXML];
   [openPanel beginSheetModalForWindow:self.window completionHandler:^(NSInteger result) {
     if(result == NSFileHandlingPanelOKButton) {
-      [document mergeWithContentsFromURL:openPanel.URL];
+      [document mergeWithContentsFromURL:openPanel.URL key:document.compositeKey];
     }
   }];
 }
@@ -323,9 +335,11 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
     self.passwordInputController = [[MPPasswordInputController alloc] init];
   }
   [self _setContentViewController:self.passwordInputController];
-  __weak MPDocumentWindowController *welf = self;
-  [self.passwordInputController requestPasswordWithCompletionHandler:^BOOL(NSString *password, NSURL *keyURL, NSError *__autoreleasing *error) {
-    return [((MPDocument *)welf.document) unlockWithPassword:password keyFileURL:keyURL error:error];
+  [self.passwordInputController requestPasswordWithCompletionHandler:^BOOL(NSString *password, NSURL *keyURL, BOOL cancel, NSError *__autoreleasing *error) {
+    if(cancel) {
+      return NO;
+    }
+    return [((MPDocument *)self.document) unlockWithPassword:password keyFileURL:keyURL error:error];
   }];
 }
 
@@ -400,7 +414,6 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 }
 - (void)duplicateEntryWithOptions:(id)sender {
   MPDuplicateEntryOptionsWindowController *wc = [[MPDuplicateEntryOptionsWindowController alloc] init];
-  __weak MPDocumentWindowController *welf = self;
   
   [self.window beginSheet:wc.window completionHandler:^(NSModalResponse returnCode) {
     if(returnCode == NSModalResponseOK) {
@@ -415,7 +428,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
       if(wc.duplicateHistory) {
         options |= kKPKCopyOptionCopyHistory;
       }
-      [((MPDocument *)welf.document) duplicateEntryWithOptions:options];
+      [((MPDocument *)self.document) duplicateEntryWithOptions:options];
     }
   }];
 }
@@ -552,9 +565,8 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
       if(NSAlertSecondButtonReturn == returnCode) {
         return;
       }
-      id __weak welf = self;
       dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [welf editPassword:nil];
+        [self editPassword:nil];
       });
     }];
   }
@@ -574,9 +586,8 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
       if(returnCode == NSAlertSecondButtonReturn) {
         return;
       }
-      id __weak welf = self;
       dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [welf editPassword:nil];
+        [self editPassword:nil];
       });
     }];
   }

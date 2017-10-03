@@ -5,6 +5,20 @@
 //  Created by michael starke on 18.02.13.
 //  Copyright (c) 2013 HicknHack Software GmbH. All rights reserved.
 //
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
 
 #import "MPEntryViewController.h"
 #import "MPAppDelegate.h"
@@ -98,8 +112,8 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
     _dataSource.viewController = self;
     _menuDelegate = [[MPEntryContextMenuDelegate alloc] init];
     _contextBarViewController = [[MPContextBarViewController alloc] init];
-    NSString *entriesKeyPath = [NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(representedObject)), NSStringFromSelector(@selector(entries))];
-    [_entryArrayController bind:NSContentBinding toObject:self withKeyPath:entriesKeyPath options:nil];
+    NSString *entriesKeyPath = [NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(representedObject)), KPKEntriesArrayBinding];
+    [_entryArrayController bind:NSContentArrayBinding toObject:self withKeyPath:entriesKeyPath options:@{NSNullPlaceholderBindingOption: @[]}];
   }
   return self;
 }
@@ -293,6 +307,8 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
   }
   else  {
     view = [tableView makeViewWithIdentifier:_MPTableStringCellView owner:self];
+    [view.textField unbind:NSValueBinding];
+    view.textField.stringValue = @"";
     if(!isModifedColumn) {
       /* clean up old formatter that might be left */
       view.textField.formatter = nil;
@@ -349,9 +365,6 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
                                        NSStringFromSelector(@selector(objectValue)),
                                        NSStringFromSelector(@selector(history))];
       [view.textField bind:NSValueBinding toObject:view withKeyPath:historyCountKeyPath options:nil];
-    }
-    else if(isIndexColumn) {
-      view.textField.stringValue = @"";
     }
   }
   return view;
@@ -459,7 +472,7 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
   NSArray *result = notification.userInfo[kMPDocumentSearchResultsKey];
   NSAssert(result != nil, @"Resutls should never be nil");
   self.filteredEntries = result;
-  [self.entryArrayController bind:NSContentArrayBinding toObject:self withKeyPath:NSStringFromSelector(@selector(filteredEntries)) options:nil];
+  self.entryArrayController.content = self.filteredEntries;
   [self.entryTable tableColumnWithIdentifier:MPEntryTableParentColumnIdentifier].hidden = NO;
   [self _updateContextBar];
 }
@@ -467,7 +480,6 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
 
 - (void)_didExitSearch:(NSNotification *)notification {
   [self.entryTable tableColumnWithIdentifier:MPEntryTableParentColumnIdentifier].hidden = YES;
-  [self.entryArrayController unbind:NSContentArrayBinding];
   self.entryArrayController.content = nil;
   self.filteredEntries = nil;
   self.displayMode = MPDisplayModeEntries;
@@ -583,7 +595,7 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
 #pragma mark Copy/Paste Overlays
 - (void)_copyToPasteboard:(NSString *)data overlayInfo:(MPOverlayInfoType)overlayInfoType name:(NSString *)name{
   if(data) {
-    [[MPPasteBoardController defaultController] copyObjects:@[ data ]];
+    [MPPasteBoardController.defaultController copyObjects:@[ data ]];
   }
   NSImage *infoImage = nil;
   NSString *infoText = nil;
