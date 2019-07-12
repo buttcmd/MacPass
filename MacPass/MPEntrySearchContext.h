@@ -30,42 +30,37 @@ typedef NS_OPTIONS(NSUInteger, MPEntrySearchFlags) {
   MPEntrySearchPasswords            = (1<<3),
   MPEntrySearchNotes                = (1<<4),
   MPEntrySearchAllAttributes        = (1<<5),
-  /* The following two flags should be used like enums.
-   They are not intended to be used in conjunction with any other flag */
-  MPEntrySearchDoublePasswords      = (1<<6),
-  MPEntrySearchExpiredEntries       = (1<<7),
+  MPEntrySearchDoublePasswords      = (1<<6), // do not combine with others. Exclusive flag
+  MPEntrySearchExpiredEntries       = (1<<7), // do not combine with others. Exclusive flag
+
   /* All combine-able search flags combined */
-  MPEntrySearchAllCombineableFlags  = (MPEntrySearchDoublePasswords |
-                                       MPEntrySearchExpiredEntries |
-                                       MPEntrySearchNotes |
+  MPEntrySearchAllCombineableFlags  = (MPEntrySearchNotes |
                                        MPEntrySearchPasswords |
                                        MPEntrySearchTitles |
                                        MPEntrySearchUrls |
-                                       MPEntrySearchUsernames |
-                                       MPEntrySearchAllAttributes),
-  MPEntrySearchSingleFlags          = (MPEntrySearchDoublePasswords | MPEntrySearchExpiredEntries),
+                                       MPEntrySearchUsernames),
+  MPEntrySearchSingleFlags          = (MPEntrySearchDoublePasswords | MPEntrySearchExpiredEntries | MPEntrySearchAllAttributes ),
   MPEntrySearchAllFlags             = (MPEntrySearchAllCombineableFlags | MPEntrySearchSingleFlags )
 };
 
 /* Wrap search criteria to be able to store them */
 @interface MPEntrySearchContext : NSObject <NSSecureCoding,NSCopying>
-
 /**
  *  Returns a default search context initialized with sane values.
  *
  *  @return The default search context
  */
-+ (instancetype)defaultContext;
+@property (readonly, class) MPEntrySearchContext *defaultContext;
 /**
  *  Returns the search context using the users preferences. If none are found, a default context is created
  *
  *  @return Search context configured to the users data. If nothing is configures, defaultContext is used
  */
-+ (instancetype)userContext;
-
-- (instancetype)initWithString:(NSString *)searchString flags:(MPEntrySearchFlags)flags;
+@property (readonly, class) MPEntrySearchContext *userContext;
 
 @property (nonatomic, assign) NSInteger searchFlags;
 @property (nonatomic, copy) NSString *searchString;
+
+- (instancetype)initWithString:(NSString *)searchString flags:(MPEntrySearchFlags)flags;
 
 @end

@@ -25,7 +25,6 @@
 
 NSString *const MPStripLineBreaksTransformerName = @"com.hicknhack.macpass.MPStripLineBreaksTransformerName";
 NSString *const MPExpiryDateValueTransformerName = @"com.hicknhack.macpass.MPExpiryDateValueTransformer";
-
 @implementation MPValueTransformerHelper
 
 + (void)registerValueTransformer {
@@ -43,16 +42,22 @@ NSString *const MPExpiryDateValueTransformerName = @"com.hicknhack.macpass.MPExp
   [NSValueTransformer registerValueTransformerWithName:MPExpiryDateValueTransformerName
                                  transformedValueClass:NSString.class
                     returningTransformedValueWithBlock:^id(id value) {
+                      NSString * _Nonnull noExpirationDateString = NSLocalizedString(@"NO_EXPIRE_DATE_SET", "Expiration date format, when item does not expire");
                       if(![value isKindOfClass:NSDate.class]) {
-                        return NSLocalizedString(@"NO_EXPIRE_DATE_SET","");
+                        return noExpirationDateString;
                       }
                       static NSDateFormatter *formatter;
                       if(!formatter) {
                         formatter = [[NSDateFormatter alloc] init];
-                        formatter.dateStyle = NSDateFormatterFullStyle;
+                        formatter.dateStyle = kCFDateFormatterLongStyle;
                         formatter.timeStyle = NSDateFormatterNoStyle;
                       }
-                      NSString *template = NSLocalizedString(@"EXPIRES_AT_DATE_%@", "");
+
+                      if([value isEqualToDate:NSDate.distantFuture]) {
+                        return noExpirationDateString;
+                      }
+
+                      NSString *template = NSLocalizedString(@"EXPIRES_AT_DATE_%@", "Format to returen the date an item expires. Includes %@ placehoder for date");
                       return [[NSString alloc] initWithFormat:template, [formatter stringFromDate:value]];
                     }];
 }

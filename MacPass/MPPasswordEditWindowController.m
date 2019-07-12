@@ -106,8 +106,8 @@
   if(_enablePassword != enablePassword) {
     _enablePassword = enablePassword;
   }
-  NSString *passwordPlaceHolder = _enablePassword ? NSLocalizedString(@"PASSWORD_INPUT_ENTER_PASSWORD", "") : NSLocalizedString(@"PASSWORD_INPUT_NO_PASSWORD", "");
-  NSString *repeatPlaceHolder = _enablePassword ? NSLocalizedString(@"PASSWORD_INPUT_REPEAT_PASSWORD", "") : NSLocalizedString(@"PASSWORD_INPUT_NO_PASSWORD", "");
+  NSString *passwordPlaceHolder = _enablePassword ? NSLocalizedString(@"PASSWORD_INPUT_ENTER_PASSWORD", "Placeholder for the password field to aks for password") : NSLocalizedString(@"PASSWORD_INPUT_NO_PASSWORD", "Placeholder for the password input field if passwords are disabled");
+  NSString *repeatPlaceHolder = _enablePassword ? NSLocalizedString(@"PASSWORD_INPUT_REPEAT_PASSWORD", "Placeholder for the repeat password field to aks for the repeated password") : NSLocalizedString(@"PASSWORD_INPUT_NO_PASSWORD", "Placeholder for the repeat password input if passwords are disabled");
   self.passwordTextField.placeholderString = passwordPlaceHolder;
   self.passwordRepeatTextField.placeholderString = repeatPlaceHolder;
 }
@@ -131,12 +131,12 @@
 
 - (IBAction)generateKey:(id)sender {
   MPDocument *document = self.document;
-  NSData *data = [NSData kpk_generateKeyfiledataForFormat:document.tree.minimumVersion.format];
+  NSData *data = [NSData kpk_generateKeyfileDataForFormat:document.tree.minimumVersion.format];
   if(data) {
     NSSavePanel *savePanel = [NSSavePanel savePanel];
     savePanel.allowedFileTypes = @[@"key", @"xml"];
     savePanel.canCreateDirectories = YES;
-    savePanel.title = NSLocalizedString(@"SAVE_KEYFILE", "");
+    savePanel.title = NSLocalizedString(@"SAVE_KEYFILE", "Button title to save the generated key file");
     [savePanel beginWithCompletionHandler:^(NSInteger result) {
       if(result == NSFileHandlingPanelOKButton) {
         NSURL *keyURL = [savePanel URL];

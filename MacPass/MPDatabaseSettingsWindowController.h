@@ -41,6 +41,7 @@ typedef NS_ENUM(NSUInteger, MPDatabaseSettingsTab) {
 @property (weak) IBOutlet NSPopUpButton *databaseCompressionPopupButton;
 @property (unsafe_unretained) IBOutlet NSTextView *databaseDescriptionTextView;
 @property (weak) IBOutlet NSColorWell *databaseColorColorWell;
+@property (weak) IBOutlet NSTextField *fileVersionTextField;
 
 /* Security Tab */
 @property (weak) IBOutlet NSButton *createKeyDerivationParametersButton;
@@ -54,11 +55,16 @@ typedef NS_ENUM(NSUInteger, MPDatabaseSettingsTab) {
 @property (weak) IBOutlet NSTextField *argon2ThreadsTextField;
 @property (weak) IBOutlet NSTextField *argon2IterationsTextField;
 @property (weak) IBOutlet NSTextField *argon2MemoryTextField;
+@property (weak) IBOutlet NSStepper *argon2MemoryStepper;
 
 /* Advanced Tab*/
 @property (weak) IBOutlet NSButton *enableHistoryCheckButton;
 @property (weak) IBOutlet NSTextField *historyMaximumItemsTextField;
-@property (weak) IBOutlet NSTextField *historyMaxiumSizeTextField;
+@property (weak) IBOutlet NSStepper *historyMaximumItemsStepper;
+
+@property (weak) IBOutlet NSTextField *historyMaximumSizeTextField;
+@property (weak) IBOutlet NSStepper *historyMaximumSizeStepper;
+
 @property (weak) IBOutlet NSButton *enableTrashCheckButton;
 @property (weak) IBOutlet NSButton *emptyTrashOnQuitCheckButton;
 @property (weak) IBOutlet NSPopUpButton *selectTrashGoupPopUpButton;
@@ -67,8 +73,11 @@ typedef NS_ENUM(NSUInteger, MPDatabaseSettingsTab) {
 
 @property (weak) IBOutlet NSButton *recommendKeyChangeCheckButton;
 @property (weak) IBOutlet NSButton *enforceKeyChangeCheckButton;
+@property (weak) IBOutlet NSButton *enforceKeyChangeOnceCheckButton;
 @property (weak) IBOutlet NSTextField *recommendKeyChangeIntervalTextField;
+@property (weak) IBOutlet NSStepper *recommendKeyChangeIntervalStepper;
 @property (weak) IBOutlet NSTextField *enforceKeyChangeIntervalTextField;
+@property (weak) IBOutlet NSStepper *enforceKeyChangeIntervalStepper;
 
 - (void)showSettingsTab:(MPDatabaseSettingsTab)tab;
 

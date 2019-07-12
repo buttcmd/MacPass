@@ -41,9 +41,18 @@
 @property (nonatomic, readonly, copy) NSString *command;
 @property (nonatomic, readonly, copy) NSString *normalizedCommand;
 /**
- *  Command with placeholders and references resolved
+ *  Command with placeholders and references resolved.
+ *  This will evaluate any placeholder regardless of side-effects.
+ *  If you need to evaluat the command without interaction, you should call kpk_finalValueForEntry:options: directly on the normalizedCommand.
  */
 @property (nonatomic, readonly, copy) NSString *evaluatedCommand;
+/**
+ @return command with placeholders and references resolved but masked password placeholder.
+ 
+ This will call kpk_finalValueForEntry:options on the normalizedCommand with options set to KPKCommandEvaluationOptionSkipUserInteraction and KPKCommandEvaluationOptionReadOnly.
+ This way it is ensured that the value can be used in UI without any intereference or data changes!
+ */
+@property (nonatomic, readonly, copy) NSString *maskedEvaluatedCommand;
 /**
  *  @return YES if valid, NO otherwise
  */
@@ -53,12 +62,14 @@
  *  Designated initializer
  *
  *  @param entry    Entry to use
- *  @param sequence Keystroke Sequence to use
+ *  @param sequence Keystroke Sequence to use, this is usefull to override any sequences stored in the entry
  *
  *  @return AutotypeSequnce with the entry and keystroke in places
  */
 - (instancetype)initWithEntry:(KPKEntry *)entry andSequence:(NSString *)sequence;
 - (instancetype)initWithDefaultSequenceForEntry:(KPKEntry *)entry;
 - (instancetype)initWithWindowAssociation:(KPKWindowAssociation *)association;
+
+- (BOOL)isEqualToAutotypeContext:(MPAutotypeContext *)context;
 
 @end

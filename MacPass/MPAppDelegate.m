@@ -23,6 +23,8 @@
 #import "MPAppDelegate.h"
 
 #import "MPAutotypeDaemon.h"
+#import "MPConstants.h"
+#import "MPContextMenuHelper.h"
 #import "MPDockTileHelper.h"
 #import "MPDocument.h"
 #import "MPDocumentController.h"
@@ -31,12 +33,19 @@
 #import "MPPasswordCreatorViewController.h"
 #import "MPPluginHost.h"
 #import "MPSettingsHelper.h"
-#import "MPSettingsWindowController.h"
+#import "MPPreferencesWindowController.h"
 #import "MPStringLengthValueTransformer.h"
+#import "MPPrettyPasswordTransformer.h"
 #import "MPTemporaryFileStorageCenter.h"
 #import "MPValueTransformerHelper.h"
+#import "MPUserNotificationCenterDelegate.h"
+#import "MPWelcomeViewController.h"
+#import "MPPlugin.h"
+#import "MPEntryContextMenuDelegate.h"
+#import "MPAutotypeDoctor.h"
 
 #import "NSApplication+MPAdditions.h"
+#import "NSTextView+MPTouchBarExtension.h"
 
 #import "KeePassKit/KeePassKit.h"
 
@@ -44,14 +53,26 @@
 
 NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDidChangeStoredKeyFilesSettings";
 
+typedef NS_OPTIONS(NSInteger, MPAppStartupState) {
+  MPAppStartupStateNone = 0,
+  MPAppStartupStateRestoredWindows = 1,
+  MPAppStartupStateFinishedLaunch = 2
+};
+
 @interface MPAppDelegate () {
 @private
-  MPDockTileHelper *dockTileHelper;
+  MPDockTileHelper *_dockTileHelper;
+  MPUserNotificationCenterDelegate *_userNotificationCenterDelegate;
   BOOL _shouldOpenFile; // YES if app was started to open a
 }
 
-@property (strong, nonatomic) MPSettingsWindowController *settingsController;
+@property (strong) NSWindow *welcomeWindow;
+@property (strong) IBOutlet NSWindow *passwordCreatorWindow;
+@property (strong, nonatomic) MPPreferencesWindowController *preferencesController;
 @property (strong, nonatomic) MPPasswordCreatorViewController *passwordCreatorController;
+@property (assign, nonatomic) MPAppStartupState startupState;
+
+@property (strong) MPEntryContextMenuDelegate *itemActionMenuDelegate;
 
 @end
 
@@ -61,24 +82,38 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
   [MPSettingsHelper setupDefaults];
   [MPSettingsHelper migrateDefaults];
   [MPStringLengthValueTransformer registerTransformer];
+  [MPPrettyPasswordTransformer registerTransformer];
   [MPValueTransformerHelper registerValueTransformer];
 }
 
 - (instancetype)init {
   self = [super init];
   if(self) {
+    _userNotificationCenterDelegate = [[MPUserNotificationCenterDelegate alloc] init];
+    self.itemActionMenuDelegate = [[MPEntryContextMenuDelegate alloc] init];
+    _shouldOpenFile = NO;
+    self.startupState = MPAppStartupStateNone;
+    
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(_applicationDidFinishRestoringWindows:)
+                                               name:NSApplicationDidFinishRestoringWindowsNotification
+                                             object:nil];
+    
     /* We know that we do not use the variable after instantiation */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
     MPDocumentController *documentController = [[MPDocumentController alloc] init];
 #pragma clang diagnostic pop
+    
+    
+    
   }
   return self;
 }
 
 - (void)dealloc {
   [self unbind:NSStringFromSelector(@selector(isAllowedToStoreKeyFile))];
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 #pragma mark Properties
@@ -90,7 +125,18 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
       [self clearRememberdKeyFiles:nil];
     }
     /* Inform anyone that might be interested that we can now no longer/ or can use keyfiles */
-    [[NSNotificationCenter defaultCenter] postNotificationName:MPDidChangeStoredKeyFilesSettings object:self];
+    [NSNotificationCenter.defaultCenter postNotificationName:MPDidChangeStoredKeyFilesSettings object:self];
+  }
+}
+
+- (void)setStartupState:(MPAppStartupState)notificationState {
+  if(notificationState != self.startupState) {
+    _startupState = notificationState;
+    BOOL restored = self.startupState & MPAppStartupStateRestoredWindows;
+    BOOL launched = self.startupState & MPAppStartupStateFinishedLaunch;
+    if(restored && launched ) {
+      [self _applicationDidFinishLaunchingAndDidRestoreWindows];
+    }
   }
 }
 
@@ -104,6 +150,18 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
     toObject:NSUserDefaultsController.sharedUserDefaultsController
  withKeyPath:[MPSettingsHelper defaultControllerPathForKey:kMPSettingsKeyRememberKeyFilesForDatabases]
      options:nil];
+  
+  NSMenu *fileMenu = self.fileNewMenuItem.menu;
+  NSInteger insertIndex = [fileMenu indexOfItem:self.fileNewMenuItem]+1;
+  NSArray *items = [MPContextMenuHelper contextMenuItemsWithItems:MPContextMenuCreate];
+  for(NSMenuItem *item in items.reverseObjectEnumerator) {
+    [fileMenu insertItem:item atIndex:insertIndex];
+  }
+  [self.itemMenu removeAllItems];
+  for(NSMenuItem *item in [MPContextMenuHelper contextMenuItemsWithItems:MPContextMenuFull]) {
+    [self.itemMenu addItem:item];
+  }
+  self.itemMenu.delegate = self.itemActionMenuDelegate;
 }
 
 #pragma mark -
@@ -111,37 +169,31 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
 
 - (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag {
   if(!flag) {
-    BOOL reopen = [[NSUserDefaults standardUserDefaults] boolForKey:kMPSettingsKeyReopenLastDatabaseOnLaunch];
+    BOOL reopen = [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyReopenLastDatabaseOnLaunch];
     BOOL showWelcomeScreen = YES;
     if(reopen) {
-      showWelcomeScreen = ![self _reopenLastDocument];
+      showWelcomeScreen = ![((MPDocumentController *)NSDocumentController.sharedDocumentController) reopenLastDocument];
     }
     if(showWelcomeScreen) {
-      [self _showWelcomeWindow];
+      [self showWelcomeWindow];
     }
   }
   return YES;
 }
 
 - (BOOL)applicationShouldOpenUntitledFile:(NSApplication *)sender {
-  return [[NSUserDefaults standardUserDefaults] boolForKey:kMPSettingsKeyOpenEmptyDatabaseOnLaunch];
+  return [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyOpenEmptyDatabaseOnLaunch];
 }
 
-
-- (void)applicationWillFinishLaunching:(NSNotification *)notification {
-  _shouldOpenFile = NO;
-  [[NSNotificationCenter defaultCenter] addObserver:self
-                                           selector:@selector(_applicationDidFinishRestoringWindows:)
-                                               name:NSApplicationDidFinishRestoringWindowsNotification
-                                             object:nil];
-  
-  
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
+  return [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyQuitOnLastWindowClose];
 }
 
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
-  if([[MPTemporaryFileStorageCenter defaultCenter] hasPendingStorages]) {
+  [self hideWelcomeWindow];
+  if(MPTemporaryFileStorageCenter.defaultCenter.hasPendingStorages) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [[MPTemporaryFileStorageCenter defaultCenter] cleanupStorages];
+      [MPTemporaryFileStorageCenter.defaultCenter cleanupStorages];
       [sender replyToApplicationShouldTerminate:YES];
     });
     return NSTerminateLater;
@@ -152,7 +204,9 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
 - (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
   _shouldOpenFile = YES;
   NSURL *fileURL = [NSURL fileURLWithPath:filename];
-  [[NSDocumentController sharedDocumentController] openDocumentWithContentsOfURL:fileURL display:YES completionHandler:^(NSDocument * _Nullable document, BOOL documentWasAlreadyOpen, NSError * _Nullable error){}];
+  [NSDocumentController.sharedDocumentController openDocumentWithContentsOfURL:fileURL
+                                                                       display:YES
+                                                             completionHandler:^(NSDocument * _Nullable document, BOOL documentWasAlreadyOpen, NSError * _Nullable error){}];
   return YES;
 }
 
@@ -160,63 +214,97 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
 #if defined(NO_SPARKLE)
   NSLog(@"Sparkle explicitly disabled!!!");
 #endif
-  /* Daemon instanziieren */
+  /* Initalizes Global Daemons */
   [MPLockDaemon defaultDaemon];
   [MPAutotypeDaemon defaultDaemon];
-  /* Create Plugin Manager */
   [MPPluginHost sharedHost];
 #if !defined(DEBUG) && !defined(NO_SPARKLE)
   /* Disable updates if in debug or nosparkle  */
   [SUUpdater sharedUpdater];
 #endif
+  self.startupState |= MPAppStartupStateFinishedLaunch;
+  // Here we just opt-in for allowing our bar to be customized throughout the app.
+  if([NSApplication.sharedApplication respondsToSelector:@selector(isAutomaticCustomizeTouchBarMenuItemEnabled)]) {
+    if(@available(macOS 10.12.2, *)) {
+      NSApplication.sharedApplication.automaticCustomizeTouchBarMenuItemEnabled = YES;
+    }
+  }
 }
 
 #pragma mark -
 #pragma mark NSMenuDelegate
 - (void)menuNeedsUpdate:(NSMenu *)menu {
-  if([self.saveMenuItem menu] != menu) {
-    return; // wrong menu
+  if(menu == self.saveMenuItem.menu) {
+    MPDocument *document = NSDocumentController.sharedDocumentController.currentDocument;
+    BOOL displayDots = (document.fileURL == nil || !document.compositeKey.hasPasswordOrKeyFile);
+    NSString *saveTitle =  displayDots ? NSLocalizedString(@"SAVE_WITH_DOTS", "Save file menu item title when save will prompt for a location to save or ask for a password/key") : NSLocalizedString(@"SAVE", "Save file menu item title when save will just save the file");
+    self.saveMenuItem.title = saveTitle;
   }
-  MPDocument *document = [[NSDocumentController sharedDocumentController] currentDocument];
-  BOOL displayDots = (document.fileURL == nil || !document.compositeKey.hasPasswordOrKeyFile);
-  NSString *saveTitle =  displayDots ? NSLocalizedString(@"SAVE_WITH_DOTS", "") : NSLocalizedString(@"SAVE", "");
-  [self.saveMenuItem setTitle:saveTitle];
+  if(menu == self.fixAutotypeMenuItem.menu) {
+    self.fixAutotypeMenuItem.hidden = !(NSEvent.modifierFlags & NSAlternateKeyMask);
+  }
+  if(menu == self.importMenu) {
+    NSMenuItem *exportXML = menu.itemArray.firstObject;
+    [menu removeAllItems];
+    for(MPPlugin<MPImportPlugin> * plugin in MPPluginHost.sharedHost.importPlugins) {
+      NSMenuItem *importItem = [[NSMenuItem alloc] init];
+      [plugin prepareImportMenuItem:importItem];
+      importItem.target = nil;
+      importItem.action = @selector(importFromPlugin:);
+    }
+    [menu insertItem:exportXML atIndex:0];
+  }
 }
 
 #pragma mark -
 #pragma mark Actions
+
+- (void)showPluginPrefences:(id)sender {
+  [self _showPreferencesTab:MPPreferencesTabPlugins];
+}
+
 - (void)showPreferences:(id)sender {
-  if(self.settingsController == nil) {
-    self.settingsController = [[MPSettingsWindowController alloc] init];
+  [self _showPreferencesTab:MPPreferencesTabGeneral];
+}
+
+- (void)_showPreferencesTab:(MPPreferencesTab)tab {
+  if(self.preferencesController == nil) {
+    self.preferencesController = [[MPPreferencesWindowController alloc] init];
   }
-  [self.settingsController showSettings];
+  [self.preferencesController showPreferencesTab:tab];
 }
 
 - (void)showPasswordCreator:(id)sender {
   if(!self.passwordCreatorWindow) {
-    [[NSBundle mainBundle] loadNibNamed:@"PasswordCreatorWindow"owner:self topLevelObjects:nil];
+    self.passwordCreatorWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 100, 100)
+                                                             styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
+                                                               backing:NSBackingStoreBuffered
+                                                                 defer:NO];
+    self.passwordCreatorWindow.releasedWhenClosed = NO;
+    self.passwordCreatorWindow.title = NSLocalizedString(@"PASSWORD_CREATOR_WINDOW_TITLE", @"Window title for the stand-alone password creator window");
   }
   if(!self.passwordCreatorController) {
     self.passwordCreatorController = [[MPPasswordCreatorViewController alloc] init];
     self.passwordCreatorWindow.contentViewController = self.passwordCreatorController;
   }
   [self.passwordCreatorController reset];
+  [self.passwordCreatorWindow center];
   [self.passwordCreatorWindow makeKeyAndOrderFront:self.passwordCreatorWindow];
 }
 
 - (void)createNewDatabase:(id)sender {
   [self.welcomeWindow orderOut:sender];
-  [[NSDocumentController sharedDocumentController] newDocument:sender];
+  [NSDocumentController.sharedDocumentController newDocument:sender];
 }
 
 - (void)openDatabase:(id)sender {
   [self.welcomeWindow orderOut:sender];
-  [[NSDocumentController sharedDocumentController] openDocument:sender];
+  [NSDocumentController.sharedDocumentController openDocument:sender];
 }
 
 - (void)lockAllDocuments {
-  for(NSDocument *document in ((NSDocumentController *)[NSDocumentController sharedDocumentController]).documents) {
-    for(id windowController in document.windowControllers) {
+  for(NSDocument *document in NSDocumentController.sharedDocumentController.documents) {
+    for(id windowController in [document.windowControllers reverseObjectEnumerator]) {
       if([windowController respondsToSelector:@selector(lock:)]) {
         [windowController lock:self];
       }
@@ -224,21 +312,46 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
   }
 }
 
+- (void)showWelcomeWindow {
+  if(!self.welcomeWindow) {
+    self.welcomeWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 100, 100)
+                                                     styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
+                                                       backing:NSBackingStoreBuffered
+                                                         defer:NO];
+    self.welcomeWindow.restorable = NO; // do not restore the welcome window!
+    self.welcomeWindow.releasedWhenClosed = NO;
+  }
+  if(!self.welcomeWindow.contentViewController) {
+    self.welcomeWindow.contentViewController = [[MPWelcomeViewController alloc] init];
+  }
+  
+  [self.welcomeWindow center];
+  [self.welcomeWindow makeKeyAndOrderFront:nil];
+}
+
+- (void)hideWelcomeWindow {
+  [self.welcomeWindow orderOut:nil];
+}
+
 - (void)clearRememberdKeyFiles:(id)sender {
-  [[NSUserDefaults standardUserDefaults] removeObjectForKey:kMPSettingsKeyRememeberdKeysForDatabases];
+  [NSUserDefaults.standardUserDefaults removeObjectForKey:kMPSettingsKeyRememeberdKeysForDatabases];
 }
 
 - (void)showHelp:(id)sender {
-  /* TODO: use Info.plist for URL */
-  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/mstarke/MacPass"]];
+  NSString *urlString = NSBundle.mainBundle.infoDictionary[MPBundleHelpURLKey];
+  [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:urlString]];
+}
+
+- (void)showAutotypeDoctor:(id)sender {
+  [MPAutotypeDoctor.defaultDoctor runChecksAndPresentResults];
 }
 
 - (void)checkForUpdates:(id)sender {
 #if defined(DEBUG) || defined(NO_SPARKLE)
   NSAlert *alert = [[NSAlert alloc] init];
-  alert.messageText = NSLocalizedString(@"Updates are disabled!", @"Message text for disabled updates alert!");
-  alert.informativeText = [NSString stringWithFormat:@"Sparkle updates are disabled for this build of %@!", NSApp.applicationName];
-  [alert addButtonWithTitle:NSLocalizedString(@"OK", @"Ok button")];
+  alert.messageText = NSLocalizedString(@"ALERT_UPDATES_DISABLED_MESSAGE_TEXT", @"Message text for disabled updates alert!");
+  alert.informativeText = [NSString stringWithFormat:NSLocalizedString(@"ALERT_UPDATES_DISABLED_INFORMATIVE_TEXT_%@!", @"Infromative text of the disabled updates alert!"), NSApp.applicationName];
+  [alert addButtonWithTitle:NSLocalizedString(@"OK", @"Ok Button to dismiss disabled updates alert")];
   [alert runModal];
 #else
   [[SUUpdater sharedUpdater] checkForUpdates:sender];
@@ -248,75 +361,27 @@ NSString *const MPDidChangeStoredKeyFilesSettings = @"com.hicknhack.macpass.MPDi
 #pragma mark -
 #pragma mark Private Helper
 - (void)_applicationDidFinishRestoringWindows:(NSNotification *)notification {
-  NSDocumentController *documentController = [NSDocumentController sharedDocumentController];
-  NSArray *documents = [documentController documents];
-  BOOL restoredWindows = [documents count] > 0;
+  self.startupState |= MPAppStartupStateRestoredWindows;
+}
+
+- (void)_applicationDidFinishLaunchingAndDidRestoreWindows {
+  NSArray *documents = NSDocumentController.sharedDocumentController.documents;
+  BOOL hasOpenDocuments = documents.count > 0;
   
   for(NSDocument *document in documents) {
-    for(NSWindowController *windowController in [document windowControllers]) {
+    for(NSWindowController *windowController in document.windowControllers) {
       [windowController.window.contentView layout];
     }
   }
   
-  BOOL reopen = [[NSUserDefaults standardUserDefaults] boolForKey:kMPSettingsKeyReopenLastDatabaseOnLaunch];
-  BOOL showWelcomeScreen = !restoredWindows && !_shouldOpenFile;
-  if(reopen && !restoredWindows && !_shouldOpenFile) {
-    showWelcomeScreen = ![self _reopenLastDocument];
+  BOOL reopen = [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyReopenLastDatabaseOnLaunch];
+  BOOL showWelcomeScreen = !hasOpenDocuments && !_shouldOpenFile;
+  if(reopen && !hasOpenDocuments && !_shouldOpenFile) {
+    showWelcomeScreen = ![((MPDocumentController *)NSDocumentController.sharedDocumentController) reopenLastDocument];
   }
   if(showWelcomeScreen) {
-    [self _showWelcomeWindow];
+    [self showWelcomeWindow];
   }
-}
-
-- (void)_showWelcomeWindow {
-  [self _loadWelcomeWindow];
-  [self.welcomeWindow makeKeyAndOrderFront:nil];
-}
-
-- (void)_loadWelcomeWindow {
-  if(!_welcomeWindow) {
-    NSArray *topLevelObject;
-    [[NSBundle mainBundle] loadNibNamed:@"WelcomeWindow" owner:self topLevelObjects:&topLevelObject];
-  }
-}
-
-- (BOOL)_reopenLastDocument {
-  NSDocumentController *documentController = [NSDocumentController sharedDocumentController];
-  NSArray *documents = [documentController documents];
-  if([documents count] > 0) {
-    return YES; // The document is already open
-  }
-  NSArray *recentDocuments = [[NSDocumentController sharedDocumentController] recentDocumentURLs];
-  NSURL *documentUrl = nil;
-  if([recentDocuments count] > 0) {
-    documentUrl = recentDocuments[0];
-  }
-  else {
-    NSString *lastPath = [[NSUserDefaults standardUserDefaults] stringForKey:kMPSettingsKeyLastDatabasePath];
-    documentUrl =[NSURL URLWithString:lastPath];
-  }
-  BOOL isFileURL = [documentUrl isFileURL];
-  if(isFileURL) {
-    [documentController openDocumentWithContentsOfURL:documentUrl
-                                              display:YES
-                                    completionHandler:^(NSDocument *document, BOOL documentWasAlreadyOpen, NSError *error) {
-                                    
-                                      if(error != nil){
-                                        
-                                        NSAlert *alert = [[NSAlert alloc] init];
-                                        [alert setMessageText:   NSLocalizedString(@"FILE_OPEN_ERROR", nil)];
-                                        [alert setInformativeText: [error localizedDescription]];
-                                        [alert setAlertStyle:NSCriticalAlertStyle ];
-                                        [alert runModal];
-                                      }
-                                      
-                                      if(document == nil){
-                                        [self _showWelcomeWindow];
-                                      }
-                                    
-                                    }];
-  }
-  return isFileURL;
 }
 
 @end

@@ -24,13 +24,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class MPAppDelegate;
+
 @interface NSApplication (MPAdditions)
 
 @property (copy, readonly) NSString *applicationName;
 @property (copy, readonly, nullable) NSURL *applicationSupportDirectoryURL;
+@property (nullable, readonly, weak) MPAppDelegate *mp_delegate;
+@property (readonly, nonatomic) BOOL isRunningTests;
 
-- (NSURL  * _Nullable)applicationSupportDirectoryURL:(BOOL)create;
-
+- (NSURL *_Nullable)applicationSupportDirectoryURL:(BOOL)create;
+- (void)relaunchAfterDelay:(CGFloat)seconds;
 @end
 
 NS_ASSUME_NONNULL_END

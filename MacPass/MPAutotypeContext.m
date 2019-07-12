@@ -57,6 +57,19 @@
   return copy;
 }
 
+- (BOOL)isEqual:(id)object {
+  return [self isEqualToAutotypeContext:object];
+}
+
+- (BOOL)isEqualToAutotypeContext:(MPAutotypeContext *)context {
+  if(![context isKindOfClass:self.class]) {
+    return NO;
+  }
+  if(KPKComparsionDifferent == [self.entry compareToEntry:context.entry]) {
+    return NO;
+  }
+  return [self.normalizedCommand isEqualToString:context.normalizedCommand];
+}
 
 - (BOOL)valid {
   return (self.normalizedCommand != nil);
@@ -67,6 +80,13 @@
     _evaluatedCommand = [[self.normalizedCommand kpk_finalValueForEntry:self.entry] copy];
   }
   return _evaluatedCommand;
+}
+
+- (NSString *)maskedEvaluatedCommand {
+  NSString *passwordPlaceholder = [NSString stringWithFormat:@"{%@}",kKPKPasswordKey];
+  NSString *normalized = self.normalizedCommand;
+  NSString *masked = [normalized stringByReplacingOccurrencesOfString:passwordPlaceholder withString:@"•••" options:NSCaseInsensitiveSearch range:NSMakeRange(0, normalized.length)];
+  return [[masked kpk_finalValueForEntry:self.entry options:KPKCommandEvaluationOptionSkipUserInteraction|KPKCommandEvaluationOptionReadOnly] copy];
 }
 
 - (NSString *)description {

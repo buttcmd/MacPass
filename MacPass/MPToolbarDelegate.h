@@ -20,11 +20,11 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 
 @class MPDocument;
 
-@interface MPToolbarDelegate : NSObject <NSToolbarDelegate>
+@interface MPToolbarDelegate : NSObject <NSToolbarDelegate, NSTextFieldDelegate>
 
 @property (weak, readonly) NSSearchField *searchField;
 @property (weak) NSToolbar *toolbar;

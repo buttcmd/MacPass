@@ -24,19 +24,25 @@
 
 APPKIT_EXTERN NSString *const MPDidChangeStoredKeyFilesSettings;
 
-@class MPAutotypeDaemon;
+@class MPEntryContextMenuDelegate;
 
 @interface MPAppDelegate : NSObject <NSApplicationDelegate, NSMenuDelegate>
 
-@property (strong) IBOutlet NSWindow *passwordCreatorWindow;
-@property (strong) IBOutlet NSWindow *welcomeWindow;
-@property (weak) IBOutlet NSMenuItem *saveMenuItem;
+@property (strong) IBOutlet NSMenuItem *saveMenuItem;
+@property (strong) IBOutlet NSMenuItem *fixAutotypeMenuItem;
+@property (strong) IBOutlet NSMenuItem *fileNewMenuItem;
+@property (strong) IBOutlet NSMenu *itemMenu;
+@property (strong) IBOutlet NSMenu *importMenu;
+
+@property (strong, readonly) MPEntryContextMenuDelegate *itemActionMenuDelegate;
 
 @property (nonatomic, assign) BOOL isAllowedToStoreKeyFile;
 
 - (IBAction)checkForUpdates:(id)sender;
 - (IBAction)showPreferences:(id)sender;
+- (IBAction)showPluginPrefences:(id)sender;
 - (IBAction)showPasswordCreator:(id)sender;
+- (IBAction)showAutotypeDoctor:(id)sender;
 - (IBAction)createNewDatabase:(id)sender;
 - (IBAction)openDatabase:(id)sender;
 - (IBAction)showHelp:(id)sender;
@@ -47,5 +53,8 @@ APPKIT_EXTERN NSString *const MPDidChangeStoredKeyFilesSettings;
 - (IBAction)clearRememberdKeyFiles:(id)sender;
 
 - (void)lockAllDocuments;
+
+- (void)showWelcomeWindow;
+- (void)hideWelcomeWindow;
 
 @end

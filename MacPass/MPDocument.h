@@ -78,6 +78,7 @@ FOUNDATION_EXPORT NSString *const MPDocumentGroupKey;
 @property (nonatomic, strong, readonly) KPKCompositeKey *compositeKey;
 
 @property (assign, readonly, getter = isReadOnly) BOOL readOnly;
+@property (atomic, assign) BOOL shouldSaveOnLock;
 @property (nonatomic, readonly, assign) KPKDatabaseFormat formatForFileType;
 
 /*
@@ -91,6 +92,8 @@ FOUNDATION_EXPORT NSString *const MPDocumentGroupKey;
 
 /*
  Search - see MPDocument+Search for further details
+ 
+ FIXME: Document is pinned to mode bases search. Wrong design!
  */
 @property (nonatomic, readonly) BOOL hasSearch;
 @property (nonatomic, copy) MPEntrySearchContext *searchContext;
@@ -146,9 +149,10 @@ FOUNDATION_EXPORT NSString *const MPDocumentGroupKey;
 - (NSArray *)allEntries;
 - (NSArray *)allGroups;
 
-- (BOOL)shouldRecommendPasswordChange;
 - (BOOL)shouldEnforcePasswordChange;
+- (BOOL)shouldRecommendPasswordChange;
 
+- (void)importTree:(KPKTree *)tree;
 - (void)writeXMLToURL:(NSURL *)url;
 - (void)readXMLfromURL:(NSURL *)url;
 - (void)mergeWithContentsFromURL:(NSURL *)url key:(KPKCompositeKey *)key;
@@ -160,6 +164,7 @@ FOUNDATION_EXPORT NSString *const MPDocumentGroupKey;
 
 - (void)deleteNode:(KPKNode *)node;
 - (void)duplicateEntryWithOptions:(KPKCopyOptions)options;
+
 
 #pragma mark Actions
 /**
@@ -254,7 +259,7 @@ FOUNDATION_EXTERN NSString *const MPDocumentDidChangeSearchResults;
 FOUNDATION_EXTERN NSString *const kMPDocumentSearchResultsKey;
 
 @interface MPDocument (Search)
-
+- (IBAction)perfromCustomSearch:(id)sender;
 - (void)enterSearchWithContext:(MPEntrySearchContext *)context;
 
 /* Should be called by the NSSearchTextField to update the search string */

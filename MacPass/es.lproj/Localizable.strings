@@ -1,4 +1,4 @@
-﻿/* Formatted Times  */
+/* Formatted Times  */
 "%ld_DAYS_AGO" = "hace %ld días";
 "%ld_HOURS_AGO" = "hace aproximadamente %ld horas";
 "%ld_MINUTES_AGO" = "hace %ld minutos";
@@ -22,8 +22,8 @@
 /*
  Actions
  */
-"ADD_ENTRY" = "Agregar Entrada";
-"ADD_GROUP" = "Agregar Grupo";
+"NEW_ENTRY" = "Agregar Entrada";
+"NEW_GROUP" = "Agregar Grupo";
 "DUPLICATE_ENTRY" = "Duplicar Entrada";
 "DUPLICATE_ENTRY_WITH_OPTIONS" = "Duplicar Entrada…";
 "COPY_ENTRY" = "Copiar Entrada";
@@ -38,19 +38,13 @@
 "NEW_ENTRY_WITH_TEMPLATE_%@" = "Crear Entrada con Plantilla %@";
 "NEW_DATABASE" = "Base de Datos";
 "OPEN_URL" = "Abrir URL";
-"PERFORM_AUTOTYPE_FOR_ENTRY" = "Generar Autotype";
+"PERFORM_AUTOTYPE_FOR_ENTRY" = "Generar Autollenado";
 "PREVIEW" = "Vista Previa";
 "PASSWORD_GENERATOR_SET_DEFAULTS" = "Configurar Predeterminados";
 "PASSWORD_GENERATOR_RESET_ENTRY_DEFAULTS" = "Reiniciar";
 "TRASH_ENTRY" = "Entrada de Papelera";
 "TRASH_GROUP" = "Grupo de Papelera";
-"SET_NAME" = "Editar Nombre";
-"SET_TITLE" = "Editar Título";
-"SET_USERNAME" = "Editar Nombre de Usuario";
-"SET_PASSWORD" = "Editar Contraseña";
-"SET_URL" = "Editar URL";
-"SET_NOTES" = "Editar Notas";
-"SHOW_HISTORY" = "Show History";
+"SHOW_HISTORY" = "Mostrar Historial";
 
 /*
  Search
@@ -70,16 +64,10 @@
 "DATABASE" = "Base de Datos";
 "DELETE" = "Eliminar";
 "EDIT" = "Editar";
-"EMAIL" = "EMail";
 "GROUP" = "Grupo";
-"GENERAL" = "General";
-"HOMEBANKING" = "Bancos";
 "INSPECTOR" = "Inspector";
-"INTERNET" = "Internet";
 "LOCK" = "Bloquear";
 "MODIFIED" = "Modificado";
-"NAME" = "Nombre";
-"NETWORK" = "Red";
 "NONE" = "Ninguno";
 "NOTES" = "Notas";
 "PASSWORD" = "Contraseña";
@@ -87,7 +75,6 @@
 "SAVE_WITH_DOTS" = "Guardar…";
 "SEARCH" = "Buscar";
 "TITLE" = "Título";
-"TRASH" = "Papelera";
 "URL" = "URL";
 "USERNAME" = "Nombre de usuario";
 "WINDOWS" = "Ventanas";
@@ -95,9 +82,6 @@
 
 "CHANGE_DATABASE_NAME" = "Cambiar Nombre de Base";
 "CHANGE_TRASH_GROUP" = "Cambiar Grupo de Papelera";
-"%@_COPY" = "%@ Copiar";
-
-"DUPLICTE_PASSWORDS" = "Duplicar Contraseñas";
 
 /* Field nam that was copied to the pasteboard */
 "COPIED_FIELD_%@" = "%@ copiado";
@@ -115,14 +99,14 @@
 
 /* Group Inspector */
 /* Autotype Combobox */
-"AUTOTYPE_NO" = "Deshabilitar Autotype";
-"AUTOTYPE_YES" = "Habilitar Autotype";
-"AUTOTYPE_INHERIT" = "Heredar Configuración de Autotype";
+"AUTOTYPE_NO" = "Deshabilitar Autollenado";
+"AUTOTYPE_YES" = "Habilitar Autollenado";
+"AUTOTYPE_INHERIT" = "Heredar Configuración de Autollenado";
 
 /* Search Combobox */
-"SEARCH_INHERIT" = "Inherit Search Settings";
-"SEARCH_YES" = "Include in Search";
-"SEARCH_NO" = "Exclude from Search";
+"SEARCH_INHERIT" = "Heredar Configuración de Búsqueda";
+"SEARCH_YES" = "Incluir en Búsqueda";
+"SEARCH_NO" = "Exluir de Búsqueda";
 
 /*
  Date/Time Displays
@@ -144,24 +128,17 @@
 "DEFAULT_GROUP_NAME" = "Nuevo Grupo";
 "DEFAULT_WINDOW_TITLE" = "Título de Ventana";
 
-/* Number of Entries
- Plural (0, >1)
- Singular (1)
- */
-"%ld_ENTRIES" = "%ld Entradas";
-"%ld_ENTRY" = "%ld Entrada";
-
 /* Settings */
-"GENERAL_SETTINGS" = "General";
+"GENERAL_PREFERENCES" = "General";
 "INTEGRATION_SETTINGS" = "Integración";
-"UPDATE_SETTINGS" = "Actualizaciones";
+"UPDATE_PREFERENCES" = "Actualizaciones";
 "WORKFLOW_SETTINGS" = "Flujo de Trabajo";
 "DEFAULT_BROWSER" = "Navegador Predeterminado";
 "OTHER_BROWSER" = "Seleccionar Navegador…";
 "PLUGIN_SETTINGS" = "Plugins";
 
 /* Feature not supported in Version */
-"KDBX_ONLY_FEATURE" = "Caraterística no soportada en base de datos KDB";
+"KDBX_ONLY_FEATURE" = "Caraterística no soportada en archivos KDB";
 
 /* Template */
 "NO_TEMPLATE_GROUP" = "Sin plantillas";
@@ -173,7 +150,7 @@
 /* Autoype */
 /* Candiate dialog */
 "SELECT_AUTOTYPE_CANDIDATE" = "Seleccionar candidato";
-"AUTOTYPE_OVERLAY_NO_DOCUMENTS" = "Please open a file to use Global Autotype!";
+"AUTOTYPE_OVERLAY_NO_DOCUMENTS" = "Debes abrir un archivo para usar Autollenado Global";
 "AUTOTYPE_OVERLAY_NO_MATCH_FOR_%@" = "No hay registros para %@!";
 "AUTOTYPE_OVERLAY_SINGLE_MATCH" = "Encontrado";
 
@@ -183,7 +160,6 @@
 "WARNING_ON_LOSSY_SAVE" = "Al guardar en formato KDB, se perderán algunos datos.";
 "WARNING_ON_LOSSY_SAVE_DESCRIPTION" = "El formato de archivo KDB no permite guardar toda la información.";
 "CHANGE_FORMAT" = "Cambiar formato de archivo a KDBX";
-"SAVE_LOSSY" = "Guardar y perder datos";
 
 "ENFORCE_PASSWORD_CHANGE_ALERT_TITLE" = "La contraseña de la base de datos ha expirado";
 "ENFORCE_PASSWORD_CHANGE_ALERT_DESCRIPTION" = "No será posible guardar cambios hsata que la contraseña o el keyfile sean modificados.";
@@ -200,15 +176,13 @@
 /* Informative text displayed when the file was change form another application */
 "FILE_CHANGED_BY_OTHERS_INFO_TEXT" = "El archivo cargado no coincide con el guardado en el disco. ¿Deseas continuar?";
 /* Set the selection as default file change strategy */
-"SET_AS_DEFAULT_FILE_CHANGE_STRATEGY" = "Use the selected strategy and do not ask me again!";
+"SET_AS_DEFAULT_FILE_CHANGE_STRATEGY" = "Utilizar la estrategia seleccionada y no volverme a preguntar.";
 /* Always show a dialog after an external file change */
-"FILE_CHANGE_STRATEGY_ASK" = "Ask Me What to Do";
+"FILE_CHANGE_STRATEGY_ASK" = "Preguntarme qué hacer";
 /* Button to ignore the changes */
 "KEEP_MINE" = "Conservar versión actual y descartar cambios";
-/* Button to reload the changes form disk */
-"LOAD_CHANGES" = "Cargar archivo modificado";
 /* Merge changes into file! */
-"MERGE_CHANGES" = "Merge changes!";
+"MERGE_CHANGES" = "Unir cambios";
 
 /* Password Input Messages, Errors and Warning */
 "PASSWORD_INPUT_NO_PASSWORD" = "Sin Contraseña";
@@ -220,5 +194,5 @@
 "ERROR_INVALID_KEYFILE" = "El Keyfile no es válido";
 
 /* Misc */
-"DOCUMENT_AUTOTYPE_CORRUPTION_WARNING" = "Por favor ejecuta Corregir Autotype...";
+"DOCUMENT_AUTOTYPE_CORRUPTION_WARNING" = "Por favor ejecuta Corregir Autollenado...";
 "FILE_OPEN_ERROR" = "Error al abrir el archivo.";

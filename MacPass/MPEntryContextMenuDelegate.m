@@ -27,20 +27,25 @@
 
 static NSUInteger const kMPCustomFieldMenuItem = 1000;
 static NSUInteger const kMPAttachmentsMenuItem = 2000;
+static NSUInteger const kMPCopyAsReferenceMenuItem = 3000;
 
 @implementation MPEntryContextMenuDelegate
 
 - (void)menuNeedsUpdate:(NSMenu *)menu {
   NSMenuItem *fieldsMenu = [menu itemWithTag:kMPCustomFieldMenuItem];
   NSMenuItem *attachmentsMenu = [menu itemWithTag:kMPAttachmentsMenuItem];
+  NSMenuItem *copyReferenceMenu = [menu itemWithTag:kMPCopyAsReferenceMenuItem];
   if(fieldsMenu) {
     [menu removeItem:fieldsMenu];
   }
   if(attachmentsMenu) {
     [menu removeItem:attachmentsMenu];
   }
+  if(copyReferenceMenu) {
+    [menu removeItem:copyReferenceMenu];
+  }
   
-  NSMenuItem *lastItem = [[menu itemArray] lastObject];
+  NSMenuItem *lastItem = menu.itemArray.lastObject;
   if([lastItem isSeparatorItem]) {
     [menu removeItem:lastItem];
   }
@@ -51,8 +56,30 @@ static NSUInteger const kMPAttachmentsMenuItem = 2000;
     return;
   }
   KPKEntry *entry = entries.lastObject;
-  if(entry.customAttributes.count > 0) {
+  if(entry) {
     [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *copyReferenceItem = [[NSMenuItem alloc] init];
+    copyReferenceItem.title = NSLocalizedString(@"COPY_AS_REFERENCE", "Submenu to copy attributes as reference");
+    copyReferenceItem.tag = kMPCopyAsReferenceMenuItem;
+    NSMenu *subMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"COPY_AS_REFERENCE_MENU", "Context menu sub-menu to copy attributes as reference")];
+    
+    NSDictionary *references = @{  kKPKReferenceURLKey: NSLocalizedString(@"COPY_URL_REFERENCE", "Context menu that copies reference to URL"),
+                                   kKPKReferenceNotesKey: NSLocalizedString(@"COPY_NOTES_REFERENCE", "Context menu that copies reference to note"),
+                                   kKPKReferenceTitleKey: NSLocalizedString(@"COPY_TITLE_REFERENCE", "Context menu that copies reference to title"),
+                                   kKPKReferencePasswordKey: NSLocalizedString(@"COPY_PASSWORD_REFERENCE", "Context menu that copies reference to password"),
+                                   kKPKReferenceUsernameKey: NSLocalizedString(@"COPY_USERNAME_REFERENCE", "Context menu that copies reference to username"),
+                                   };
+    for(NSString *key in references) {
+      NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:references[key] action:@selector(copyAsReference:) keyEquivalent:@""];
+      item.representedObject = key;
+      [subMenu addItem:item];
+    }
+    
+    copyReferenceItem.representedObject = entry.uuid.UUIDString;
+    copyReferenceItem.submenu = subMenu;
+    [menu addItem:copyReferenceItem];
+  }
+  if(entry.customAttributes.count > 0) {
     NSMenuItem *attributeItem = [[NSMenuItem alloc] init];
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"COPY_CUSTOM_FIELDS_MENU", @"Context menu sub-menu to copy custom fields to clipboard")];
     attributeItem.title = NSLocalizedString(@"COPY_CUSTOM_FIELDS", "Submenu to Copy custom fields");

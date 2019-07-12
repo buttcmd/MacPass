@@ -21,13 +21,14 @@
 //
 
 #import "MPViewController.h"
-
+#import "HNHUi/HNHUi.h"
 #import <Quartz/Quartz.h>
 
-@class HNHUIRoundedSecureTextField;
+@class HNHUISecureTextField;
+@class MPContextButton;
 @class MPDocument;
 
-@interface MPEntryInspectorViewController : MPViewController <NSPopoverDelegate, QLPreviewPanelDelegate>
+@interface MPEntryInspectorViewController : MPViewController <NSPopoverDelegate, QLPreviewPanelDelegate, HNHUITextFieldDelegate>
 
 @property (weak) IBOutlet NSSegmentedControl *infoTabControl;
 
@@ -38,7 +39,7 @@
 @property (weak) IBOutlet NSTextField *titleTextField;
 @property (weak) IBOutlet NSTextField *usernameTextField;
 @property (weak) IBOutlet NSTextField *URLTextField;
-@property (weak) IBOutlet HNHUIRoundedSecureTextField *passwordTextField;
+@property (weak) IBOutlet HNHUISecureTextField *passwordTextField;
 @property (weak) IBOutlet NSButton *generatePasswordButton;
 @property (weak) IBOutlet NSButton *togglePassword;
 @property (weak) IBOutlet NSButton *pickExpireDateButton;
@@ -48,7 +49,7 @@
 
 @property (weak) IBOutlet NSTextField *createdTextField;
 @property (weak) IBOutlet NSTextField *modifiedTextField;
-@property (weak) IBOutlet NSButton *addCustomFieldButton;
+@property (weak) IBOutlet MPContextButton *addCustomFieldButton;
 
 /* Attachments */
 @property (weak) IBOutlet NSButtonCell *addAttachmentButton;
@@ -77,6 +78,8 @@
 - (void)registerNotificationsForDocument:(MPDocument *)document;
 
 - (IBAction)showPasswordGenerator:(id)sender;
+- (IBAction)showReferenceBuilder:(id)sender;
+- (IBAction)showAutotypeBuilder:(id)sender;
 
 - (IBAction)saveAttachment:(id)sender;
 - (IBAction)addAttachment:(id)sender;
@@ -89,5 +92,5 @@
 - (IBAction)removeWindowAssociation:(id)sender;
 
 - (IBAction)toggleQuicklookPreview:(id)sender;
-
+- (IBAction)toggleExpire:(NSButton*)sender;
 @end

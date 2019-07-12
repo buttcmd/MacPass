@@ -24,8 +24,9 @@
 
 #import "MPToolbarButton.h"
 #import "MPToolbarItem.h"
-#import "MPContextToolbarButton.h"
+#import "MPContextButton.h"
 #import "MPAddEntryContextMenuDelegate.h"
+#import "MPEntryContextMenuDelegate.h"
 
 #import "MPActionHelper.h"
 #import "MPContextMenuHelper.h"
@@ -33,6 +34,9 @@
 
 #import "MPDocumentWindowController.h"
 #import "MPDocument.h"
+
+#import "NSApplication+MPAdditions.h"
+#import "MPAppDelegate.h"
 
 NSString *const MPToolbarItemLock = @"TOOLBAR_LOCK";
 NSString *const MPToolbarItemAddGroup = @"TOOLBAR_ADD_GROUP";
@@ -44,9 +48,10 @@ NSString *const MPToolbarItemSearch = @"TOOLBAR_SEARCH";
 NSString *const MPToolbarItemCopyUsername = @"TOOLBAR_COPY_USERNAME";
 NSString *const MPToolbarItemCopyPassword = @"TOOLBAR_COPY_PASSWORD";
 NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
+NSString *const MPToolbarItemAutotype = @"TOOLBAR_AUTOTYPE";
 
 @interface MPToolbarDelegate() {
-  MPAddEntryContextMenuDelegate *_entryMenuDelegate;
+  MPAddEntryContextMenuDelegate *_addEntryMenuDelegate;
   BOOL _didShowToolbarForSearch;
   BOOL _didAddSearchfieldForSearch;
   NSToolbarDisplayMode _displayModeBeforeSearch;
@@ -77,10 +82,12 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
                              MPToolbarItemSearch,
                              MPToolbarItemLock,
                              MPToolbarItemInspector,
-                             MPToolbarItemHistory ];
+                             MPToolbarItemHistory,
+                             MPToolbarItemAutotype ];
     _defaultToolbarIdentifiers = @[ MPToolbarItemAddEntry,
                                     MPToolbarItemDelete,
                                     MPToolbarItemAddGroup,
+                                    MPToolbarItemAutotype,
                                     MPToolbarItemAction,
                                     NSToolbarFlexibleSpaceItemIdentifier,
                                     MPToolbarItemSearch,
@@ -88,13 +95,13 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
                                     MPToolbarItemInspector ];
     _toolbarImages = [self createToolbarImages];
     _toolbarItems = [[NSMutableDictionary alloc] initWithCapacity:[self.toolbarIdentifiers count]];
-    _entryMenuDelegate = [[MPAddEntryContextMenuDelegate alloc] init];
+    _addEntryMenuDelegate = [[MPAddEntryContextMenuDelegate alloc] init];
   }
   return self;
 }
 
 - (void)dealloc {
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 
@@ -103,14 +110,15 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
   if(!item) {
     item = [[MPToolbarItem alloc] initWithItemIdentifier:itemIdentifier];
     NSString *itemLabel = [self _localizedLabelForToolbarItemIdentifier:itemIdentifier];
-    [item setLabel:itemLabel];
+    item.label = itemLabel;
+    item.paletteLabel = itemLabel;
     
     if([itemIdentifier isEqualToString:MPToolbarItemAction]) {
       NSPopUpButton *popupButton = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 50, 32) pullsDown:YES];
       popupButton.bezelStyle = NSTexturedRoundedBezelStyle;
       popupButton.focusRingType = NSFocusRingTypeNone;
       popupButton.title = @"";
-      [popupButton.cell setImageScaling:NSImageScaleProportionallyDown];
+      popupButton.imageScaling = NSImageScaleProportionallyDown;
       [popupButton sizeToFit];
       
       NSRect newFrame = popupButton.frame;
@@ -131,21 +139,22 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
       
       popupButton.frame = newFrame;
       popupButton.menu = menu;
+      menu.delegate = NSApp.mp_delegate.itemActionMenuDelegate;
       item.menuFormRepresentation = menuRepresentation;
       item.view = popupButton;
     }
     else if( [itemIdentifier isEqualToString:MPToolbarItemAddEntry]) {
-      MPContextToolbarButton *button = [[MPContextToolbarButton alloc] initWithFrame:NSMakeRect(0, 0, 32, 32)];
-      [button setAction:[self _actionForToolbarItemIdentifier:itemIdentifier]];
+      MPContextButton *button = [[MPContextButton alloc] initWithFrame:NSMakeRect(0, 0, 32, 32)];
+      button.action = [self _actionForToolbarItemIdentifier:itemIdentifier];
       NSImage *image = self.toolbarImages[itemIdentifier];
       image.size = NSMakeSize(16, 16);
       [button setImage:image];
       [button sizeToFit];
       
-      NSMenu *menu = [NSMenu allocWithZone:[NSMenu menuZone]];
+      NSMenu *menu = [[NSMenu alloc] init];
       [menu addItemWithTitle:NSLocalizedString(@"UNKNOWN_TOOLBAR_ITEM", @"") action:NULL keyEquivalent:@""];
-      menu.delegate = _entryMenuDelegate;
-      [button setContextMenu:menu];
+      menu.delegate = _addEntryMenuDelegate;
+      button.contextMenu = menu;
       
       
       NSRect fittingRect = button.frame;
@@ -156,7 +165,7 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
       NSMenuItem *menuRepresentation = [[NSMenuItem alloc] initWithTitle:itemLabel
                                                                   action:[self _actionForToolbarItemIdentifier:itemIdentifier]
                                                            keyEquivalent:@""];
-      [item setMenuFormRepresentation:menuRepresentation];
+      item.menuFormRepresentation = menuRepresentation;
       
     }
     else if( [itemIdentifier isEqualToString:MPToolbarItemSearch]){
@@ -171,7 +180,9 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
       item.minSize = NSMakeSize(140, 32);
       item.maxSize = NSMakeSize(240, 32);
       NSMenu *templateMenu = [self _allocateSearchMenuTemplate];
-      [searchField.cell setSearchMenuTemplate:templateMenu];
+      searchField.searchMenuTemplate = templateMenu;
+      /* 10.10 does not support NSSearchFieldDelegate */
+      ((NSTextField *)searchField).delegate = self;
       self.searchField = searchField;
     }
     else {
@@ -213,31 +224,45 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
                                MPToolbarItemDelete: [MPIconHelper icon:MPIconTrash],
                                MPToolbarItemAction: [NSImage imageNamed:NSImageNameActionTemplate],
                                MPToolbarItemInspector: [MPIconHelper icon:MPIconInfo],
-                               MPToolbarItemHistory: [MPIconHelper icon:MPIconHistory]
+                               MPToolbarItemHistory: [MPIconHelper icon:MPIconHistory],
+                               MPToolbarItemAutotype : [MPIconHelper icon:MPIconKeyboard]
                                };
   return imageDict;
 }
 
 
 - (void)registerNotificationsForDocument:(MPDocument *)document {
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didExitSearch:) name:MPDocumentDidExitSearchNotification object:document];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didEnterSearch:) name:MPDocumentDidEnterSearchNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didExitSearch:) name:MPDocumentDidExitSearchNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didEnterSearch:) name:MPDocumentDidEnterSearchNotification object:document];
 }
 
+#pragma mark - NSSearchFieldDelegate
+- (BOOL)control:(NSControl *)control textView:(NSTextView *)textView doCommandBySelector:(SEL)commandSelector {
+  if(commandSelector == @selector(insertNewline:) || commandSelector == @selector(moveDown:)) {
+    /* Dispatch the focus loss since doing it now will break recent search storage */
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[NSApp targetForAction:@selector(focusEntries:) to:nil from:self] focusEntries:self];
+    });
+  }
+  return NO;
+}
+
+#pragma mark - Private
 - (NSString *)_localizedLabelForToolbarItemIdentifier:(NSString *)identifier {
   static NSDictionary *labelDict;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    labelDict = @{ MPToolbarItemLock: NSLocalizedString(@"LOCK", @""),
-                   MPToolbarItemAction: NSLocalizedString(@"ACTION", @""),
-                   MPToolbarItemAddEntry: NSLocalizedString(@"ADD_ENTRY", @""),
-                   MPToolbarItemAddGroup: NSLocalizedString(@"ADD_GROUP", @""),
-                   MPToolbarItemCopyPassword: NSLocalizedString(@"COPY_PASSWORD", @""),
-                   MPToolbarItemCopyUsername: NSLocalizedString(@"COPY_USERNAME", @""),
-                   MPToolbarItemDelete: NSLocalizedString(@"DELETE", @""),
-                   MPToolbarItemInspector: NSLocalizedString(@"INSPECTOR", @""),
-                   MPToolbarItemSearch: NSLocalizedString(@"SEARCH", @""),
-                   MPToolbarItemHistory: NSLocalizedString(@"SHOW_HISTORY", @""),
+    labelDict = @{ MPToolbarItemLock: NSLocalizedString(@"LOCK", @"Toolbar item to Lock the database"),
+                   MPToolbarItemAction: NSLocalizedString(@"ACTION", @"Toolbar item with action menu"),
+                   MPToolbarItemAddEntry: NSLocalizedString(@"NEW_ENTRY", @"Toolbar item new entry"),
+                   MPToolbarItemAddGroup: NSLocalizedString(@"NEW_GROUP", @"Toolbar item new group"),
+                   MPToolbarItemCopyPassword: NSLocalizedString(@"COPY_PASSWORD", @"Toolbar item copy password"),
+                   MPToolbarItemCopyUsername: NSLocalizedString(@"COPY_USERNAME", @"Toolbar item copy username"),
+                   MPToolbarItemDelete: NSLocalizedString(@"DELETE", @"Toolbar item delete item"),
+                   MPToolbarItemInspector: NSLocalizedString(@"INSPECTOR", @"Toolbar item toggle inspector"),
+                   MPToolbarItemSearch: NSLocalizedString(@"SEARCH", @"Search input in Toolbar "),
+                   MPToolbarItemHistory: NSLocalizedString(@"SHOW_HISTORY", @"Toolbar item to toggle history display"),
+                   MPToolbarItemAutotype: NSLocalizedString(@"TOOLBAR_PERFORM_AUTOTYPE_FOR_ENTRY", @"Toolbar item to perform autotype")
                    };
   });
   return labelDict[identifier];
@@ -255,6 +280,7 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
                     MPToolbarItemCopyUsername: @(MPActionCopyUsername),
                     MPToolbarItemInspector: @(MPActionToggleInspector),
                     MPToolbarItemHistory: @(MPActionShowEntryHistory),
+                    MPToolbarItemAutotype: @(MPActionPerformAutotypeForSelectedEntry)
                     };
   });
   MPActionType actionType = (MPActionType)[actionDict[identifier] integerValue];
@@ -263,13 +289,13 @@ NSString *const MPToolbarItemHistory = @"TOOLBAR_HISTORY";
 
 - (NSMenu *)_allocateSearchMenuTemplate {
   NSMenu *menu = [[NSMenu alloc] init];
-  NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"CLEAR_RECENT_SEARCHES", @"") action:NULL keyEquivalent:@""];
+  NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"CLEAR_RECENT_SEARCHES", @"Menu to clear recent searches") action:NULL keyEquivalent:@""];
   item.tag = NSSearchFieldClearRecentsMenuItemTag;
   [menu addItem:item];
   
   [menu addItem:[NSMenuItem separatorItem]];
 
-  item = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"RECENT_SEARCHES", @"") action:NULL keyEquivalent:@""];
+  item = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"RECENT_SEARCHES", @"Recent searches menu item") action:NULL keyEquivalent:@""];
   item.tag = NSSearchFieldRecentsTitleMenuItemTag;
   [menu addItem:item];
   

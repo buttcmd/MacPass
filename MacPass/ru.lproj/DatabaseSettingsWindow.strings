@@ -1,4 +1,3 @@
-
 /* Class = "NSWindow"; title = "Window"; ObjectID = "1"; */
 "1.title" = "Окно";
 
@@ -20,31 +19,13 @@
 /* Class = "NSTabViewItem"; label = "Security"; ObjectID = "370"; */
 "370.label" = "Безопасность";
 
-/* Class = "NSButtonCell"; title = "Protect Title"; ObjectID = "464"; */
-"464.title" = "Защитить Заголовок";
-
-/* Class = "NSButtonCell"; title = "Protect Username"; ObjectID = "477"; */
-"477.title" = "Защитить Имя пользователя";
-
-/* Class = "NSButtonCell"; title = "Protect Password"; ObjectID = "505"; */
-"505.title" = "Защитить Пароль";
-
-/* Class = "NSButtonCell"; title = "Protect URL"; ObjectID = "510"; */
-"510.title" = "Защитить URL";
-
-/* Class = "NSButtonCell"; title = "Protect Notes"; ObjectID = "514"; */
-"514.title" = "Защитить Заметки";
-
 /* Class = "NSButtonCell"; title = "Enable Entry History"; ObjectID = "532"; */
-"532.title" = "Включить Историю Записи";
+"532.title" = "Включить историю записи";
 
 /* Class = "NSButtonCell"; title = "Enable Recycle Bin"; ObjectID = "536"; */
 "536.title" = "Включить Корзину";
 
-/* Class = "NSButtonCell"; title = "Empty Recycle Bin on Quit"; ObjectID = "540"; */
-"540.title" = "Очищать корзину при выходе";
-
-/* Class = "NSTextFieldCell"; title = "Maximum Items:"; ObjectID = "558"; */
+/* Class = "NSTextFieldCell"; title = "Maximum items in history:"; ObjectID = "558"; */
 "558.title" = "Максимум элементов:";
 
 /* Class = "NSMenu"; title = "OtherViews"; ObjectID = "680"; */
@@ -53,7 +34,7 @@
 /* Class = "NSButtonCell"; title = "Cancel"; ObjectID = "957"; */
 "957.title" = "Отмена";
 
-/* Class = "NSTextFieldCell"; title = "Maximum Size:"; ObjectID = "1269"; */
+/* Class = "NSTextFieldCell"; title = "Maximum history size:"; ObjectID = "1269"; */
 "1269.title" = "Максимальный размер:";
 
 /* Class = "NSMenu"; title = "OtherViews"; ObjectID = "1396"; */
@@ -77,35 +58,17 @@
 /* Class = "NSTextFieldCell"; title = "Default Username:"; ObjectID = "1591"; */
 "1591.title" = "Имя пользователя по умолчанию:";
 
-/* Class = "NSTextFieldCell"; title = "Key encryption rounds:"; ObjectID = "1644"; */
-"1644.title" = "Проходов шифрования ключа:";
-
 /* Class = "NSMenu"; title = "OtherViews"; ObjectID = "1740"; */
 "1740.title" = "OtherViews";
 
-/* Class = "NSMenuItem"; title = "Item 1"; ObjectID = "1741"; */
-"1741.title" = "Элемент 1";
-
-/* Class = "NSMenuItem"; title = "Item 2"; ObjectID = "1742"; */
-"1742.title" = "Элемент 2";
-
-/* Class = "NSMenuItem"; title = "Item 3"; ObjectID = "1743"; */
-"1743.title" = "Элемент 3";
-
-/* Class = "NSButtonCell"; title = "Benchmark"; ObjectID = "1775"; */
-"1775.title" = "Тест";
-
-/* Class = "NSButtonCell"; title = "Recommend key change every:"; ObjectID = "CtU-Eq-dgy"; */
+/* Class = "NSButtonCell"; title = "Recommend key change"; ObjectID = "CtU-Eq-dgy"; */
 "CtU-Eq-dgy.title" = "Рекомендовать сменую ключа каждые:";
 
-/* Class = "NSTextFieldCell"; placeholderString = "days"; ObjectID = "M9G-Yy-1s4"; */
-"M9G-Yy-1s4.placeholderString" = "дней";
-
-/* Class = "NSTextFieldCell"; placeholderString = "days"; ObjectID = "Nca-aw-6rR"; */
-"Nca-aw-6rR.placeholderString" = "дней";
-
-/* Class = "NSTextFieldCell"; title = "Disabling password protection will remove unallowed characters in passwords. This will cause data loss after saving."; ObjectID = "iZR-sj-MHg"; */
-"iZR-sj-MHg.title" = "Отключение защиты пароля удалит все недопустимые символы в уже сохраненных паролях. Это может вызвать потерю данных после сохранения.";
-
-/* Class = "NSButtonCell"; title = "Force key change every:"; ObjectID = "z6u-YT-7LE"; */
+/* Class = "NSButtonCell"; title = "Force key change"; ObjectID = "z6u-YT-7LE"; */
 "z6u-YT-7LE.title" = "Требовать сменую ключа каждые:";
+
+/* Class = "NSTextFieldCell"; title = "File format:"; ObjectID = "bTk-YZ-x0G"; */
+"bTk-YZ-x0G.title" = "Формат файла";
+
+/* Class = "NSButtonCell"; title = "Force key change once after unlocking"; ObjectID = "pA1-aL-KjT"; */
+"pA1-aL-KjT.title" = "Принудительная смена ключа после разблокировки";

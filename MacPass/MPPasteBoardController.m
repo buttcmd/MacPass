@@ -22,6 +22,7 @@
 
 #import "MPPasteBoardController.h"
 #import "MPSettingsHelper.h"
+#import "MPOverlayWindowController.h"
 
 /* Notifications */
 NSString *const MPPasteBoardControllerDidCopyObjects    = @"com.hicknhack.macpass.MPPasteBoardControllerDidCopyObjects";
@@ -73,6 +74,7 @@ NSString *const MPPasteBoardControllerDidClearClipboard = @"com.hicknhack.macpas
   for (NSPasteboardItem *item in NSPasteboard.generalPasteboard.pasteboardItems) {
     NSPasteboardItem *newItem = [[NSPasteboardItem alloc] init];
     for (NSString *type in item.types) {
+      /* mutable copy to ensure actual deep copy */
       NSData *data = [[item dataForType:type] mutableCopy];
       if (data) {
         [newItem setData:data forType:type];
@@ -95,20 +97,73 @@ NSString *const MPPasteBoardControllerDidClearClipboard = @"com.hicknhack.macpas
   [self copyObjectsWithoutTimeout:objects];
   if(self.clearTimeout != 0) {
     [NSNotificationCenter.defaultCenter postNotificationName:MPPasteBoardControllerDidCopyObjects object:self];
+    /* cancel old timer */
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(_clearPasteboardContents) object:nil];
+    /* setup new timer */
     [self performSelector:@selector(_clearPasteboardContents) withObject:nil afterDelay:self.clearTimeout];
   }
 }
 
 - (void)copyObjectsWithoutTimeout:(NSArray<id<NSPasteboardWriting>> *)objects {
-  [NSPasteboard.generalPasteboard clearContents];
+  if(@available(macOS 10.12, *)) {
+    NSPasteboardContentsOptions options = [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyPreventUniversalClipboard] ? NSPasteboardContentsCurrentHostOnly : 0;
+    [NSPasteboard.generalPasteboard prepareForNewContentsWithOptions:options];
+  }
+  else {
+    [NSPasteboard.generalPasteboard clearContents];
+  }
   [NSPasteboard.generalPasteboard writeObjects:objects];
   self.isEmpty = NO;
+}
+
+- (void)copyObjects:(NSArray<id<NSPasteboardWriting>> *)objects overlayInfo:(MPPasteboardOverlayInfoType)overlayInfoType name:(NSString *)name atView:(NSView *)view{
+  if(!objects) {
+    return;
+  }
+  [MPPasteBoardController.defaultController copyObjects:objects];
+  NSImage *infoImage = nil;
+  NSString *infoText = nil;
+  switch(overlayInfoType) {
+    case MPPasteboardOverlayInfoPassword:
+      infoImage = [NSBundle.mainBundle imageForResource:@"00_PasswordTemplate"];
+      infoText = NSLocalizedString(@"COPIED_PASSWORD", @"Password was copied to the pasteboard");
+      break;
+      
+    case MPPasteboardOverlayInfoURL:
+      infoImage = [NSBundle.mainBundle imageForResource:@"01_PackageNetworkTemplate"];
+      infoText = NSLocalizedString(@"COPIED_URL", @"URL was copied to the pasteboard");
+      break;
+      
+    case MPPasteboardOverlayInfoUsername:
+      infoImage = [NSBundle.mainBundle imageForResource:@"09_IdentityTemplate"];
+      infoText = NSLocalizedString(@"COPIED_USERNAME", @"Username was copied to the pasteboard");
+      break;
+      
+    case MPPasteboardOverlayInfoCustom:
+      infoImage = [NSBundle.mainBundle imageForResource:@"00_PasswordTemplate"];
+      infoText = [NSString stringWithFormat:NSLocalizedString(@"COPIED_FIELD_%@", "Field name that was copied to the pasteboard"), name];
+      break;
+      
+    case MPPasteboardOverlayInfoReference:
+      infoImage = [NSBundle.mainBundle imageForResource:@"04_KlipperTemplate"];
+      infoText = name;
+      break;
+      
+  }
+  [MPOverlayWindowController.sharedController displayOverlayImage:infoImage label:infoText atView:view];
+  
+  BOOL hide = [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyHideAfterCopyToClipboard];
+  if(hide) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(400 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+      [NSApplication.sharedApplication hide:nil];
+    });
+  }
 }
 
 - (void)_clearPasteboardContents {
   /* Only clear stuff we might have put there */
   if(!self.isEmpty) {
-    [[NSPasteboard generalPasteboard] clearContents];
+    [NSPasteboard.generalPasteboard clearContents];
     [NSNotificationCenter.defaultCenter postNotificationName:MPPasteBoardControllerDidClearClipboard object:self];
   }
   self.isEmpty = YES;

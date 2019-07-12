@@ -41,7 +41,7 @@
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     NSMutableArray *fields = [[NSMutableArray alloc] init];
-    for(NSString *attribute in [KPKFormat sharedFormat].entryDefaultKeys) {
+    for(NSString *attribute in KPKFormat.sharedFormat.entryDefaultKeys) {
       [fields addObject:[NSString stringWithFormat:@"{%@}", attribute]];
     }
     [fields addObject:@"{S:Custom}"];
@@ -54,7 +54,7 @@
 }
 
 - (void)dealloc {
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 - (NSString *)nibName {
@@ -69,9 +69,8 @@
   self.commandBuilderTokenField.delegate = self;
 }
 
-- (void)presentBuilderWithSequence:(NSString *)sequence {
-  // TODO: tokenize input sequence!
-  //self.commandBuilderTokenField.stringValue = sequence;
+- (void)setSequence:(NSString *)sequence {
+  self.commandBuilderTokenField.stringValue = sequence;
 }
 
 - (IBAction)addCustomKeyPlaceholder:(id)sender {
@@ -110,10 +109,10 @@
 
 - (NSTokenStyle)tokenField:(NSTokenField *)tokenField styleForRepresentedObject:(id)representedObject {
   if(tokenField == self.availableCommandsTokenField) {
-    return NSTokenStyleDefault;
+    return NSTokenStyleSquared;
   }
   if([representedObject hasPrefix:@"{"] || [representedObject hasSuffix:@"}"]) {
-    return NSTokenStyleDefault;
+    return NSTokenStyleSquared;
   }
   return NSTokenStyleNone;
 }

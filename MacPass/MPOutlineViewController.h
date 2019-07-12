@@ -25,14 +25,13 @@
 
 APPKIT_EXTERN NSString *const MPOutlineViewDidChangeGroupSelection;
 
-@class HNHUIGradientView;
 @class MPDocument;
 
 @interface MPOutlineViewController : MPViewController <MPTargetNodeResolving, NSOutlineViewDelegate, NSMenuDelegate>
 
 - (void)clearSelection;
 - (void)showOutline;
-- (void)regsiterNotificationsForDocument:(MPDocument *)document;
+- (void)registerNotificationsForDocument:(MPDocument *)document;
 
 /**
  *	Retrieves the current item for the current mouse location

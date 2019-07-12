@@ -30,14 +30,11 @@
 #import "MPIconImageView.h"
 #import "MPNotifications.h"
 #import "MPPluginDataViewController.h"
+#import "MPPasteBoardController.h"
 
 #import "KeePassKit/KeePassKit.h"
 
 #import "KPKNode+IconImage.h"
-
-#import "HNHUi/HNHUi.h"
-
-#import "NSDate+Humanized.h"
 
 typedef NS_ENUM(NSUInteger, MPContentTab) {
   MPEntryTab,
@@ -50,16 +47,12 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
 @property (strong) MPEntryInspectorViewController *entryViewController;
 @property (strong) MPGroupInspectorViewController *groupViewController;
 
-@property (strong) NSPopover *popover;
-
-@property (nonatomic, strong) NSDate *modificationDate;
-@property (nonatomic, strong) NSDate *creationDate;
 @property (copy) NSString *expiryDateText;
 
 @property (nonatomic, assign) NSUInteger activeTab;
 @property (weak) IBOutlet NSTabView *tabView;
 @property (weak) IBOutlet NSSplitView *splitView;
-@property (unsafe_unretained) IBOutlet NSTextView *notesTextView;
+@property (unsafe_unretained) IBOutlet HNHUITextView *notesTextView;
 
 @property BOOL didPushHistory;
 
@@ -92,8 +85,6 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
 }
 
 - (void)awakeFromNib {
-  self.bottomBar.borderType = (HNHBorderTop|HNHBorderHighlight);
-  
   self.noSelectionInfo.cell.backgroundStyle = NSBackgroundStyleRaised;
   self.itemImageView.cell.backgroundStyle = NSBackgroundStyleRaised;
   [self.tabView bind:NSSelectedIndexBinding toObject:self withKeyPath:NSStringFromSelector(@selector(activeTab)) options:nil];
@@ -117,11 +108,7 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
   [groupTabView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[groupView]|" options:0 metrics:nil views:views]];
   groupTabItem.initialFirstResponder = groupView;
   
-  [self.view layout];
-  
-  self.discardChangesButton.hidden = YES;
-  self.saveChangesButton.hidden = YES;
-}
+  [self.view layout];}
 
 - (void)registerNotificationsForDocument:(MPDocument *)document {
   [[NSNotificationCenter defaultCenter] addObserver:self
@@ -139,92 +126,69 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
   self.observer = document;
   
   [self.entryViewController registerNotificationsForDocument:document];
+  [self.groupViewController registerNotificationsForDocument:document];
 }
 
-#pragma mark -
-#pragma mark Properties
+#pragma mark - Properties
 - (void)setActiveTab:(NSUInteger)activeTab {
   if(_activeTab != activeTab) {
     _activeTab = activeTab;
   }
 }
 
-- (void)setModificationDate:(NSDate *)modificationDate {
-  _modificationDate = modificationDate;
-  [self _updateDateStrings];
-}
-
-- (void)setCreationDate:(NSDate *)creationDate {
-  _creationDate = creationDate;
-  [self _updateDateStrings];
-}
-
-- (void)_updateDateStrings {
-  
-  if(!self.creationDate || !self.modificationDate ) {
-    [self.modifiedTextField setStringValue:@""];
-    [self.createdTextField setStringValue:@""];
-    return; // No dates, just clear
+#pragma mark - TextViewDelegate
+- (BOOL)textView:(NSTextView *)textView performAction:(SEL)action {
+  if(action == @selector(copy:)) {
+    MPPasteboardOverlayInfoType info = MPPasteboardOverlayInfoCustom;
+    NSMutableString *selectedString = [[NSMutableString alloc] initWithCapacity:MAX(1,textView.string.length)];
+    NSString *string = textView.string;
+    for(NSValue *rangeValue in textView.selectedRanges) {
+      if(rangeValue.rangeValue.length != 0) {
+        [selectedString appendString:[string substringWithRange:rangeValue.rangeValue]];
+      }
+    }
+    NSString *name = @"";
+    if(selectedString.length == 0) {
+      return YES;
+    }
+    if(textView == self.notesTextView) {
+      name = NSLocalizedString(@"NOTES", "Displayed name when notes or part of notes was copied");
+    }
+    [[MPPasteBoardController defaultController] copyObjects:@[selectedString] overlayInfo:info name:name atView:self.view];
+    return NO;
   }
-  
-  NSString *creationString = [self.creationDate humanized];
-  NSString *modificationString = [self.modificationDate humanized];
-  
-  NSString *modifedAtTemplate = NSLocalizedString(@"MODIFED_AT_%@", @"Modifed at template string. %@ is replaced by locaized date and time");
-  NSString *createdAtTemplate = NSLocalizedString(@"CREATED_AT_%@", @"Created at template string. %@ is replaced by locaized date and time");
-  
-  self.modifiedTextField.stringValue = [NSString stringWithFormat:modifedAtTemplate, modificationString];
-  self.createdTextField.stringValue = [NSString stringWithFormat:createdAtTemplate, creationString];
+  return YES;
 }
-
-#pragma mark -
-#pragma mark Popup
+#pragma mark - Popup
 - (IBAction)pickIcon:(id)sender {
   NSAssert([sender isKindOfClass:NSView.class], @"");
-  [self _popupViewController:[[MPIconSelectViewController alloc] init] atView:(NSView *)sender];
+  [self _popupViewController:[[MPIconSelectViewController alloc] init] atView:sender];
 }
 
 - (IBAction)pickExpiryDate:(id)sender {
   NSAssert([sender isKindOfClass:NSView.class], @"");
-  [self _popupViewController:[[MPDatePickingViewController alloc] init] atView:(NSView *)sender];
+  [self _popupViewController:[[MPDatePickingViewController alloc] init] atView:sender];
 }
 
 - (IBAction)showPluginData:(id)sender {
-  NSAssert([sender isKindOfClass:[NSView class]], @"");
-  [self _popupViewController:[[MPPluginDataViewController alloc] init] atView:(NSView *)sender];
+  NSAssert([sender isKindOfClass:NSView.class], @"");
+  [self _popupViewController:[[MPPluginDataViewController alloc] init] atView:sender];
 }
 
 - (void)_popupViewController:(MPViewController *)vc atView:(NSView *)view {
-  if(self.popover) {
-    return; // Popover still active, abort
-  }
-  self.popover = [[NSPopover alloc] init];
-  self.popover.delegate = self;
-  self.popover.behavior = NSPopoverBehaviorTransient;
   vc.representedObject = self.representedObject;
   vc.observer = self.windowController.document;
-  self.popover.contentViewController = vc;
-  [self.popover showRelativeToRect:NSZeroRect ofView:view preferredEdge:NSMinYEdge];
+  [self presentViewController:vc asPopoverRelativeToRect:NSZeroRect ofView:view preferredEdge:NSMinYEdge behavior:NSPopoverBehaviorSemitransient];
 }
 
-
-#pragma mark -
-#pragma mark NSPopover Delegate
-
-- (void)popoverDidClose:(NSNotification *)notification {
-  /* clear out the popover */
-  self.popover = nil;
-}
-
-#pragma mark -
-#pragma mark MPDocument Notifications
+#pragma mark - MPDocument Notifications
 - (void)_willChangeModelProperty:(NSNotification *)notification {
   /* TODO use uuids for pushed item? */
   if(self.didPushHistory) {
     return;
   }
   KPKEntry *entry = [self.representedObject asEntry];
-  if( entry ) {
+  if(entry) {
     [entry pushHistory];
     self.didPushHistory = YES;
   }

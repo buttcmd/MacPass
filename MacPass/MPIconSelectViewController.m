@@ -26,21 +26,35 @@
 #import "MPCollectionView.h"
 #import "MPCollectionViewItem.h"
 
+typedef NS_ENUM(NSInteger, MPIconDownloadStatus) {
+  MPIconDownloadStatusNone,
+  MPIconDownloadStatusProgress,
+  MPIconDownloadStatusError
+};
+
 @interface MPIconSelectViewController () <NSCollectionViewDelegate>
 
 /* UI properties */
+@property (weak) IBOutlet NSColorWell *foregroundColorWell;
+@property (weak) IBOutlet NSColorWell *backgroundColorWell;
 @property (weak) IBOutlet MPCollectionView *iconCollectionView;
 @property (weak) IBOutlet NSButton *imageButton;
+@property (weak) IBOutlet NSButton *downloadIconButton;
+@property (assign) MPIconDownloadStatus downloadStatus;
 
 @end
 
 @implementation MPIconSelectViewController
+
+@dynamic downloadStatus;
 
 - (NSString *)nibName {
   return @"IconSelection";
 }
 
 - (void)viewDidLoad {
+  KPKNode *node = self.representedObject;
+  self.downloadIconButton.enabled = (nil != node.asEntry);
   self.iconCollectionView.backgroundColors = @[NSColor.clearColor];
   self.iconCollectionView.selectable = YES;
   self.iconCollectionView.allowsMultipleSelection = NO;
@@ -48,8 +62,20 @@
   [self.iconCollectionView registerForDraggedTypes:@[(NSString *)kUTTypeURL, (NSString *)kUTTypeFileURL]];
   
   NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
-  [menu addItem:[[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"DELETE", @"") action:@selector(deleteIcon:) keyEquivalent:@""]];
+  [menu addItem:[[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"DELETE", @"Menu item to delete the selected custom icon") action:@selector(deleteIcon:) keyEquivalent:@""]];
   self.iconCollectionView.menu = menu;
+  
+  KPKEntry *entry = [self.representedObject asEntry];
+  if(entry) {
+    self.foregroundColorWell.enabled = YES;
+    self.foregroundColorWell.color = entry.foregroundColor ? entry.foregroundColor : NSColor.clearColor;
+    self.backgroundColorWell.enabled = YES;
+    self.backgroundColorWell.color = entry.backgroundColor ? entry.backgroundColor : NSColor.clearColor;
+  }
+  else {
+    self.foregroundColorWell.enabled = NO;
+    self.backgroundColorWell.enabled = NO;
+  }
   
   [self _updateCollectionViewContent];
 }
@@ -60,7 +86,7 @@
   node.iconId = [node.class defaultIcon];
   node.iconUUID = nil;
   [self.observer didChangeModelProperty];
-  [self.view.window performClose:sender];
+  [self dismissController:sender];
 }
 
 - (IBAction)downloadIcon:(id)sender {
@@ -68,41 +94,67 @@
   if(!node.asEntry) {
     return;
   }
-  NSString *rawURL = node.asEntry.url;
-  if([rawURL hasPrefix:@"http://"] || ![rawURL hasPrefix:@"https://"]) {
-    rawURL = [@"https://" stringByAppendingString:rawURL];
-  }
-  
-  NSURL *url = [NSURL URLWithString:rawURL];
-  if(!url) {
-    return;
-  }
-  
-  NSString *urlString = [NSString stringWithFormat:@"%@://%@/favicon.ico", url.scheme, url.host ? url.host : @""];
-  NSURL *favIconURL = [NSURL URLWithString:urlString];
-  if(!favIconURL) {
-    return;
-  }
-  
-  KPKMetaData *metaData = ((MPDocument *)[NSDocumentController sharedDocumentController].currentDocument).tree.metaData;
-  NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithURL:favIconURL completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-    if(data) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        KPKIcon *newIcon = [[KPKIcon alloc] initWithImageData:data];
-        if(newIcon) {
-          [metaData addCustomIcon:newIcon];
-          [self _updateCollectionViewContent];
-        }
-      });
+  [self _downloadIconForURL:node.asEntry.url];
+}
+
+- (void)setDownloadStatus:(MPIconDownloadStatus)status {
+  switch (status) {
+    case MPIconDownloadStatusNone:
+      self.downloadIconButton.image = nil;
+      break;
+    case MPIconDownloadStatusError: {
+      NSImage *image = [NSImage imageNamed:NSImageNameCaution];
+      CGFloat scale = image.size.width / image.size.height;
+      image.size = NSMakeSize(16 * scale, 16);
+      self.downloadIconButton.image = image;
+      break;
     }
+    case MPIconDownloadStatusProgress: {
+      NSImage *image = [NSImage imageNamed:NSImageNameRefreshTemplate];
+      CGFloat scale = image.size.width / image.size.height;
+      image.size = NSMakeSize(16 * scale, 16);
+      self.downloadIconButton.image = image;
+      break;
+    }
+  }
+}
+
+- (void)_downloadIconForURL:(NSString *)URLString {
+  if([URLString hasPrefix:@"http://"] || ![URLString hasPrefix:@"https://"]) {
+    URLString = [@"https://" stringByAppendingString:URLString];
+  }
+  
+  NSURL *url = [NSURL URLWithString:URLString];
+  KPKMetaData *metaData = ((MPDocument *)[NSDocumentController sharedDocumentController].currentDocument).tree.metaData;
+  
+  [MPIconHelper fetchIconDataForURL:url completionHandler:^(NSData *iconData) {
+     if(!iconData || iconData.length == 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.downloadStatus = MPIconDownloadStatusError;
+      });
+       return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+      KPKIcon *newIcon = [[KPKIcon alloc] initWithImageData:iconData];
+      if(newIcon && newIcon.image) {
+        self.downloadStatus = MPIconDownloadStatusNone;
+        [metaData addCustomIcon:newIcon];
+        [self _updateCollectionViewContent];
+      }
+      else {
+        self.downloadStatus = MPIconDownloadStatusError;
+      }
+    });
   }];
-  [task resume];
 }
 
 - (void)deleteIcon:(id)sender {
   NSUInteger index = self.iconCollectionView.contextMenuIndex;
   NSUInteger firstCustomIndex = [MPIconHelper databaseIcons].count;
   if(index < firstCustomIndex) {
+    return;
+  }
+  if(index >= self.iconCollectionView.content.count) {
     return;
   }
   MPDocument *document = [NSDocumentController sharedDocumentController].currentDocument;
@@ -124,16 +176,22 @@
 }
 
 - (IBAction)cancel:(id)sender {
-  [self.view.window performClose:sender];
+  [self dismissController:sender];
 }
 
-- (void)didSelectCollectionViewItem:(id)sender {
-  if(![sender isKindOfClass:[NSCollectionViewItem class]]) {
-    return;
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+  if(menuItem.action == @selector(deleteIcon:)) {
+    NSUInteger index = self.iconCollectionView.contextMenuIndex;
+    NSUInteger firstCustomIndex = [MPIconHelper databaseIcons].count;
+    if(index < firstCustomIndex) {
+      return NO;
+    }
+    if(index >= self.iconCollectionView.content.count) {
+      return NO;
+    }
+    return YES;
   }
-  NSCollectionViewItem *item = sender;
-  NSLog(@"selected item.frame: %@", NSStringFromRect(item.view.frame));
-  //[self _selectIcon:item.representedObject];
+  return NO;
 }
 
 - (void)_selectIcon:(KPKIcon *)icon {
@@ -151,7 +209,7 @@
     node.iconUUID = nil;
   }
   [self.observer didChangeModelProperty];
-  [self.view.window performClose:nil];
+  [self dismissController:nil];
 }
 
 - (NSDragOperation)collectionView:(NSCollectionView *)collectionView validateDrop:(id <NSDraggingInfo>)draggingInfo proposedIndex:(NSInteger *)proposedDropIndex dropOperation:(NSCollectionViewDropOperation *)proposedDropOperation {
@@ -166,7 +224,7 @@
     return NO;
   }
   BOOL success = NO;
-  MPDocument *document = [NSDocumentController sharedDocumentController].currentDocument;
+  MPDocument *document = NSDocumentController.sharedDocumentController.currentDocument;
   for(NSURL *url in urls) {
     KPKIcon *icon = [[KPKIcon alloc] initWithImageAtURL:url];
     if(icon.image) {

@@ -25,7 +25,7 @@
 #import "MPAppDelegate.h"
 #import "MPAutotypeDaemon.h"
 #import "MPConstants.h"
-#import "MPContextToolbarButton.h"
+#import "MPContextButton.h"
 #import "MPDatabaseSettingsWindowController.h"
 #import "MPDocument.h"
 #import "MPDocumentWindowDelegate.h"
@@ -38,8 +38,26 @@
 #import "MPPasswordInputController.h"
 #import "MPSettingsHelper.h"
 #import "MPToolbarDelegate.h"
+#import "MPTitlebarColorAccessoryViewController.h"
+#import "MPTouchBarButtonCreator.h"
+#import "MPIconHelper.h"
+
+#import "MPPluginHost.h"
+#import "MPPlugin.h"
 
 #import "KeePassKit/KeePassKit.h"
+
+static NSTouchBarCustomizationIdentifier touchBarIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow";
+static NSTouchBarItemIdentifier touchBarSearchIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.search";
+static NSTouchBarItemIdentifier touchBarEditPopoverIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.editPopover";
+static NSTouchBarItemIdentifier touchBarCopyUsernameIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.copyUsername";
+static NSTouchBarItemIdentifier touchBarCopyPasswordIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.copyPassword";
+static NSTouchBarItemIdentifier touchBarPerformAutotypeIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.performAutotype";
+static NSTouchBarItemIdentifier touchBarLockIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.lock";
+
+static NSTouchBarItemIdentifier secondaryTouchBarNewEntryIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.newEntry";
+static NSTouchBarItemIdentifier secondaryTouchBarNewGroupIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.newGroup";
+static NSTouchBarItemIdentifier secondaryTouchBarDeleteIdentifier = @"com.hicknhacksoftware.MacPass.TouchBar.documentWindow.delete";
 
 typedef NS_ENUM(NSUInteger, MPAlertContext) {
   MPAlertLossySaveWarning,
@@ -102,15 +120,15 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   
   MPDocument *document = self.document;
   
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didRevertDocument:) name:MPDocumentDidRevertNotifiation object:document];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didUnlockDatabase:) name:MPDocumentDidUnlockDatabaseNotification object:document];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didAddEntry:) name:MPDocumentDidAddEntryNotification object:document];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didAddGroup:) name:MPDocumentDidAddGroupNotification object:document];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didLockDatabase:) name:MPDocumentDidLockDatabaseNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didRevertDocument:) name:MPDocumentDidRevertNotifiation object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didUnlockDatabase:) name:MPDocumentDidUnlockDatabaseNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didAddEntry:) name:MPDocumentDidAddEntryNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didAddGroup:) name:MPDocumentDidAddGroupNotification object:document];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_didLockDatabase:) name:MPDocumentDidLockDatabaseNotification object:document];
   
   [self.entryViewController registerNotificationsForDocument:document];
   [self.inspectorViewController registerNotificationsForDocument:document];
-  [self.outlineViewController regsiterNotificationsForDocument:document];
+  [self.outlineViewController registerNotificationsForDocument:document];
   [self.toolbarDelegate registerNotificationsForDocument:document];
   
   self.toolbar = [[NSToolbar alloc] initWithIdentifier:@"MainWindowToolbar"];
@@ -132,7 +150,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   [self.splitView setHoldingPriority:NSLayoutPriorityDefaultLow+2 forSubviewAtIndex:0];
   [self.splitView setHoldingPriority:NSLayoutPriorityDefaultLow+1 forSubviewAtIndex:2];
   
-  BOOL showInspector = [[NSUserDefaults standardUserDefaults] boolForKey:kMPSettingsKeyShowInspector];
+  BOOL showInspector = [NSUserDefaults.standardUserDefaults boolForKey:kMPSettingsKeyShowInspector];
   if(!showInspector) {
     [inspectorView removeFromSuperview];
   }
@@ -145,6 +163,13 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   }
   
   self.splitView.autosaveName = @"SplitView";
+  
+  /*
+   TODO: Add display for database color?
+   NSTitlebarAccessoryViewController *tbc = [[MPTitlebarColorAccessoryViewController alloc] init];
+   tbc.layoutAttribute = NSLayoutAttributeRight;
+   [self.window addTitlebarAccessoryViewController:tbc];
+   */
 }
 
 - (NSSearchField *)searchField {
@@ -200,7 +225,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   [self showPasswordInput];
 }
 
-- (void)_didUnlockDatabase:(NSNotification *)notification {
+- (void)_didUnlockDatabase:(NSNotification *)notification {  
   [self showEntries];
   /* Show password reminders */
   [self _presentPasswordIntervalAlerts];
@@ -210,55 +235,12 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 #pragma mark Actions
 - (void)saveDocument:(id)sender {
   MPDocument *document = self.document;
-  /* did we open as legacy ?
-  
-  NSString *fileType = document.fileType;
-  if([fileType isEqualToString:MPKdbxDocumentUTI]) {
-    if(document.tree.minimumVersion.format != KPKDatabaseFormatKdb) {
-      NSAlert *alert = [[NSAlert alloc] init];
-      alert.alertStyle = NSWarningAlertStyle;
-      alert.messageText = NSLocalizedString(@"WARNING_ON_LOSSY_SAVE", "");
-      alert.informativeText = NSLocalizedString(@"WARNING_ON_LOSSY_SAVE_DESCRIPTION", "Informative Text displayed when saving would yield data loss");
-      
-      [alert addButtonWithTitle:NSLocalizedString(@"SAVE_LOSSY", "Save lossy")];
-      [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_FORMAT", "")];
-      [alert addButtonWithTitle:NSLocalizedString(@"CANCEL", "Cancel")];
-      [alert beginSheetModalForWindow:((NSDocument *)self.document).windowForSheet completionHandler:^(NSModalResponse returnCode) {
-        switch(returnCode) {
-          case NSAlertFirstButtonReturn:
-            // save lossy
-            [self.document saveDocument:nil];
-            return;
-            
-          case NSAlertSecondButtonReturn:
-            [alert.window orderOut:nil];
-            [self.document saveDocumentAs:nil];
-            return;
-            
-          case NSAlertThirdButtonReturn:
-          default:
-            return; // Cancel or unknown
-        }
-      }];
-      return;
-    }
-  }
-  else*/
   if(!document.compositeKey) {
     [self editPasswordWithCompetionHandler:^(NSInteger result) {
       if(result == NSModalResponseOK) {
         [self saveDocument:sender];
       }
     }];
-    return;
-  }
-  else if(document.shouldEnforcePasswordChange) {
-    [self editPasswordWithCompetionHandler:^(NSInteger result) {
-      if(result == NSModalResponseOK) {
-        [self saveDocument:sender];
-      }
-    }];
-    [self _presentPasswordIntervalAlerts];
     return;
   }
   /* All set and good ready to save */
@@ -299,11 +281,35 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   openPanel.canChooseDirectories = NO;
   openPanel.canChooseFiles = YES;
   openPanel.allowedFileTypes = @[(id)kUTTypeXML];
+  openPanel.prompt = NSLocalizedString(@"OPEN_BUTTON_IMPORT_XML_OPEN_PANEL", "Open button in the open panel to import an XML file");
+  openPanel.message = NSLocalizedString(@"MESSAGE_XML_OPEN_PANEL", "Message in the open panel to import an XML file");
   [openPanel beginSheetModalForWindow:self.window completionHandler:^(NSInteger result) {
     if(result == NSFileHandlingPanelOKButton) {
       [document readXMLfromURL:openPanel.URL];
       [self.outlineViewController showOutline];
     }
+  }];
+}
+
+- (void)importFromPlugin:(id)sender {
+  if(![sender isKindOfClass:NSMenuItem.class]) {
+    return;
+  }
+  NSMenuItem *menuItem = sender;
+  if(![menuItem.representedObject isKindOfClass:NSDictionary.class]) {
+    return;
+  }
+  
+  NSWindow *sheetWindow = ((MPDocument *)self.document).windowForSheet;
+  if(!sheetWindow) {
+    return;
+  }
+  MPPlugin<MPImportPlugin> *importPlugin;
+  NSOpenPanel *openPanel = NSOpenPanel.openPanel;
+  [importPlugin prepareOpenPanel:openPanel];
+  [openPanel beginSheetModalForWindow:sheetWindow completionHandler:^(NSModalResponse result) {
+    KPKTree *importedTree = [importPlugin treeForRunningOpenPanel:openPanel withResponse:result];
+    [self.document importTree:importedTree];
   }];
 }
 
@@ -326,20 +332,24 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   if(!self.fixAutotypeWindowController) {
     self.fixAutotypeWindowController = [[MPFixAutotypeWindowController alloc] init];
   }
-  [self.document addWindowController:self.fixAutotypeWindowController];
+  self.fixAutotypeWindowController.document = self.document;
   [self.fixAutotypeWindowController.window makeKeyAndOrderFront:sender];
 }
 
 - (void)showPasswordInput {
+  [self showPasswordInputWithMessage:nil];
+}
+- (void)showPasswordInputWithMessage:(NSString *)message {
   if(!self.passwordInputController) {
     self.passwordInputController = [[MPPasswordInputController alloc] init];
   }
   [self _setContentViewController:self.passwordInputController];
-  [self.passwordInputController requestPasswordWithCompletionHandler:^BOOL(NSString *password, NSURL *keyURL, BOOL cancel, NSError *__autoreleasing *error) {
-    if(cancel) {
+  [self.passwordInputController requestPasswordWithMessage:message cancelLabel:nil completionHandler:^BOOL(NSString *password, NSURL *keyURL, BOOL didCancel, NSError *__autoreleasing *error) {
+    if(didCancel) {
       return NO;
     }
     return [((MPDocument *)self.document) unlockWithPassword:password keyFileURL:keyURL error:error];
+    
   }];
 }
 
@@ -375,19 +385,24 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 }
 
 - (IBAction)lock:(id)sender {
-  MPDocument *document = [self document];
-  if(!document.compositeKey.hasPasswordOrKeyFile) {
-    return; // Document needs a password/keyfile to be lockable
-  }
+  MPDocument *document = self.document;
   if(document.encrypted) {
     return; // Document already locked
+  }
+  if(!document.compositeKey) {
+    [self editPasswordWithCompetionHandler:^(NSInteger result) {
+      if(result == NSModalResponseOK) {
+        [self lock:sender];
+      }
+    }];
+    return;
   }
   [document lockDatabase:sender];
 }
 
 - (void)createGroup:(id)sender {
   id<MPTargetNodeResolving> target = [NSApp targetForAction:@selector(currentTargetGroups)];
-  NSArray *groups = [target currentTargetGroups];
+  NSArray *groups = target.currentTargetGroups;
   MPDocument *document = self.document;
   if(groups.count == 1) {
     [document createGroup:groups.firstObject];
@@ -399,7 +414,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 
 - (void)createEntry:(id)sender {
   id<MPTargetNodeResolving> target = [NSApp targetForAction:@selector(currentTargetGroups)];
-  NSArray *groups = [target currentTargetGroups];
+  NSArray *groups = target.currentTargetGroups;
   if(groups.count == 1) {
     [(MPDocument *)self.document createEntry:groups.firstObject];
   }
@@ -407,7 +422,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 
 - (void)delete:(id)sender {
   id<MPTargetNodeResolving> target = [NSApp targetForAction:@selector(currentTargetNodes)];
-  NSArray *nodes = [target currentTargetNodes];
+  NSArray *nodes = target.currentTargetNodes;
   for(KPKNode *node in nodes) {
     [self.document deleteNode:node];
   }
@@ -459,7 +474,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 
 - (void)performAutotypeForEntry:(id)sender {
   id<MPTargetNodeResolving> entryResolver = [NSApp targetForAction:@selector(currentTargetEntries)];
-  NSArray *entries = [entryResolver currentTargetEntries];
+  NSArray *entries = entryResolver.currentTargetEntries;
   if(entries.count == 1) {
     [[MPAutotypeDaemon defaultDaemon] performAutotypeForEntry:entries.firstObject];
   }
@@ -472,7 +487,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 }
 
 - (void)focusEntries:(id)sender {
-  [[self window] makeFirstResponder:[self.entryViewController reconmendedFirstResponder]];
+  [self.window makeFirstResponder:[self.entryViewController reconmendedFirstResponder]];
 }
 
 - (void)focusGroups:(id)sender {
@@ -501,13 +516,13 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
    Add all needed constraints an then remove it again, if it was hidden
    */
   BOOL removeInspector = NO;
-  if(![inspectorView superview]) {
+  if(!inspectorView.superview) {
     [self.splitView addSubview:inspectorView];
     removeInspector = YES;
   }
   /* Maybe we should consider not double adding constraints */
   NSDictionary *views = NSDictionaryOfVariableBindings(outlineView, inspectorView, entryView, _splitView);
-  [self.splitView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[outlineView(>=150)]-1-[entryView(>=350)]-1-[inspectorView(>=200)]|"
+  [self.splitView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[outlineView(>=150)]-1-[entryView(>=150)]-1-[inspectorView(>=200)]|"
                                                                          options:0
                                                                          metrics:nil
                                                                            views:views]];
@@ -515,7 +530,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
                                                                          options:0
                                                                          metrics:nil
                                                                            views:views]];
-  [self.splitView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[entryView(>=300)]|"
+  [self.splitView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[entryView(>=200)]|"
                                                                          options:0
                                                                          metrics:nil
                                                                            views:views]];
@@ -542,6 +557,32 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
   [contentView layoutSubtreeIfNeeded];
 }
 
+#pragma mark -
+#pragma mark Actions forwarded to MPEntryViewController
+- (void)copyUsername:(id)sender {
+  [self.entryViewController copyUsername:sender];
+}
+
+- (void)copyPassword:(id)sender {
+  [self.entryViewController copyPassword:sender];
+}
+
+- (void)copyCustomAttribute:(id)sender {
+  [self.entryViewController copyCustomAttribute:sender];
+}
+
+- (void)copyAsReference:(id)sender {
+  [self.entryViewController copyAsReference:sender];
+}
+
+- (void)copyURL:(id)sender {
+  [self.entryViewController copyURL:sender];
+}
+
+- (void)openURL:(id)sender {
+  [self.entryViewController openURL:sender];
+}
+
 #pragma mark Validation
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
   return ([self.document validateMenuItem:menuItem]);
@@ -549,24 +590,35 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 
 #pragma mark NSAlert handling
 - (void)_presentPasswordIntervalAlerts {
-  MPDocument *document = [self document];
+  MPDocument *document = self.document;
   if(document.shouldEnforcePasswordChange) {
     NSAlert *alert = [[NSAlert alloc] init];
     
     alert.alertStyle = NSCriticalAlertStyle;
-    alert.messageText = NSLocalizedString(@"ENFORCE_PASSWORD_CHANGE_ALERT_TITLE", "");
-    alert.informativeText = NSLocalizedString(@"ENFORCE_PASSWORD_CHANGE_ALERT_DESCRIPTION", "");
+    alert.messageText = NSLocalizedString(@"ENFORCE_PASSWORD_CHANGE_ALERT_TITLE", "Message text for the enforce password change alert");
+    alert.informativeText = NSLocalizedString(@"ENFORCE_PASSWORD_CHANGE_ALERT_DESCRIPTION", "Informative text for the enforce password change alert");
     
-    [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_PASSWORD_WITH_DOTS", "")];
-    [alert addButtonWithTitle:NSLocalizedString(@"CANCEL", "")];
-    alert.buttons[1].keyEquivalent = [NSString stringWithFormat:@"%c", 0x1b];
+    [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_PASSWORD_WITH_DOTS", "Single button to show the password change dialog")];
     
     [alert beginSheetModalForWindow:[self.document windowForSheet] completionHandler:^(NSModalResponse returnCode) {
-      if(NSAlertSecondButtonReturn == returnCode) {
+      /* if sheet was stopped any other way, do nothing */
+      if(returnCode != NSAlertFirstButtonReturn) {
         return;
       }
       dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self editPassword:nil];
+        [self editPasswordWithCompetionHandler:^(NSInteger result) {
+          /* if password was changed, reset change key and dismiss */
+          if(result == NSModalResponseOK) {
+            document.tree.metaData.enforceMasterKeyChangeOnce = NO;
+          }
+          else if(result == NSModalResponseCancel) {
+            /* password was not changes, so keep nagging the user! */
+            [self _presentPasswordIntervalAlerts];
+          }
+          else {
+            // We might have been killed by locking so do nothing!
+          }
+        }];
       });
     }];
   }
@@ -574,11 +626,11 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
     NSAlert *alert = [[NSAlert alloc] init];
     
     alert.alertStyle = NSInformationalAlertStyle;
-    alert.messageText = NSLocalizedString(@"RECOMMEND_PASSWORD_CHANGE_ALERT_TITLE", "");
-    alert.informativeText = NSLocalizedString(@"RECOMMEND_PASSWORD_CHANGE_ALERT_DESCRIPTION", "");
+    alert.messageText = NSLocalizedString(@"RECOMMEND_PASSWORD_CHANGE_ALERT_TITLE", "Message text for the recommend password change alert");
+    alert.informativeText = NSLocalizedString(@"RECOMMEND_PASSWORD_CHANGE_ALERT_DESCRIPTION", "Informative text for the recommend password change alert");
     
-    [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_PASSWORD_WITH_DOTS", "")];
-    [alert addButtonWithTitle:NSLocalizedString(@"CANCEL", "")];
+    [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_PASSWORD_WITH_DOTS", "Button to show the password change dialog")];
+    [alert addButtonWithTitle:NSLocalizedString(@"CHANGE_LATER", "Button to postpone the password change")];
     alert.buttons[1].keyEquivalent = [NSString stringWithFormat:@"%c", 0x1b];
     
     
@@ -612,6 +664,101 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 - (BOOL)_isInspectorVisible {
   NSView *inspectorView = self.inspectorViewController.view;
   return (nil != inspectorView.superview);
+}
+
+- (NSTouchBar *)makeTouchBar {
+  NSTouchBar *touchBar = [[NSTouchBar alloc] init];
+  touchBar.delegate = self;
+  touchBar.customizationIdentifier = touchBarIdentifier;
+  NSArray<NSTouchBarItemIdentifier> *defaultItemIdentifiers = @[touchBarSearchIdentifier, touchBarEditPopoverIdentifier, touchBarCopyUsernameIdentifier, touchBarCopyPasswordIdentifier,  touchBarPerformAutotypeIdentifier, NSTouchBarItemIdentifierFlexibleSpace, touchBarLockIdentifier];
+  touchBar.defaultItemIdentifiers = defaultItemIdentifiers;
+  touchBar.customizationAllowedItemIdentifiers = defaultItemIdentifiers;
+  return touchBar;
+}
+
+- (NSTouchBarItem *)touchBar:(NSTouchBar *)touchBar makeItemForIdentifier:(NSTouchBarItemIdentifier)identifier  API_AVAILABLE(macos(10.12.2)) {
+#pragma mark primary touchbar elements
+  if([identifier isEqualToString:touchBarSearchIdentifier]) {
+    return [MPTouchBarButtonCreator touchBarButtonWithImage:[NSImage imageNamed:NSImageNameTouchBarSearchTemplate]
+                                                 identifier:touchBarSearchIdentifier
+                                                     target:self
+                                                   selector:@selector(focusSearchField)
+                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_SEARCH","Touchbar button label for searching the database")];
+  }
+  
+  if(identifier == touchBarEditPopoverIdentifier) {
+    NSTouchBar *secondaryTouchBar = [[NSTouchBar alloc] init];
+    secondaryTouchBar.delegate = self;
+    secondaryTouchBar.defaultItemIdentifiers = @[secondaryTouchBarNewEntryIdentifier, secondaryTouchBarNewGroupIdentifier, secondaryTouchBarDeleteIdentifier];
+    return [MPTouchBarButtonCreator popoverTouchBarButton:NSLocalizedString(@"TOUCHBAR_EDIT","Touchbar button label for opening the popover to edit")
+                                               identifier:touchBarEditPopoverIdentifier
+                                          popoverTouchBar:secondaryTouchBar
+                                       customizationLabel:NSLocalizedString(@"TOUCHBAR_EDIT","Touchbar button label for opening the popover to edit")];
+  }
+  
+  if(identifier == touchBarCopyUsernameIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitle:NSLocalizedString(@"TOUCHBAR_COPY_USERNAME","Touchbar button label for copying the username")
+                                                 identifier:touchBarCopyUsernameIdentifier
+                                                     target:self
+                                                   selector:@selector(copyUsername:)
+                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_COPY_USERNAME","Touchbar button label for copying the username")];
+  }
+  
+  if (identifier == touchBarCopyPasswordIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitle:NSLocalizedString(@"TOUCHBAR_COPY_PASSWORD","Touchbar button label for copying the password")
+                                                 identifier:touchBarCopyPasswordIdentifier
+                                                     target:self
+                                                   selector:@selector(copyPassword:)
+                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_COPY_PASSWORD","Touchbar button label for copying the password")];
+  }
+  
+  if (identifier == touchBarPerformAutotypeIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitle:NSLocalizedString(@"TOUCHBAR_PERFORM_AUTOTYPE","Touchbar button label for performing autotype")
+                                                 identifier:touchBarPerformAutotypeIdentifier
+                                                     target:self
+                                                   selector:@selector(performAutotypeForEntry:)
+                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_PERFORM_AUTOTYPE","Touchbar button label for performing autotype")];
+  }
+  else if (identifier == touchBarLockIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithImage:[NSImage imageNamed:NSImageNameLockUnlockedTemplate]
+                                                 identifier:touchBarLockIdentifier
+                                                     target:self
+                                                   selector:@selector(lock:)
+                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_LOCK_DATABASE","Touchbar button label for locking the database")];
+  }
+#pragma mark secondary/popover touchbar elements
+  else if(identifier == secondaryTouchBarNewEntryIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitleAndImage:NSLocalizedString(@"TOUCHBAR_NEW_ENTRY","Touchbar button label for creating a new item")
+                                                         identifier:secondaryTouchBarNewEntryIdentifier
+                                                              image:[MPIconHelper icon:MPIconAddEntry]
+                                                             target:self
+                                                           selector:@selector(createEntry:)
+                                                 customizationLabel:NSLocalizedString(@"TOUCHBAR_NEW_ENTRY","Touchbar button label for creating a new item")];
+  }
+  else if (identifier == secondaryTouchBarNewGroupIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitleAndImage:NSLocalizedString(@"TOUCHBAR_NEW_GROUP","Touchbar button label for creating a new group")
+                                                         identifier:secondaryTouchBarNewGroupIdentifier
+                                                              image:[MPIconHelper icon:MPIconAddFolder]
+                                                             target:self
+                                                           selector:@selector(createGroup:)
+                                                 customizationLabel:NSLocalizedString(@"TOUCHBAR_NEW_GROUP","Touchbar button label for creating a new group")];
+  }
+  else if (identifier == secondaryTouchBarDeleteIdentifier) {
+    return [MPTouchBarButtonCreator touchBarButtonWithTitleAndImageAndColor:NSLocalizedString(@"TOUCHBAR_DELETE","Touchbar button label for deleting elements")
+                                                                 identifier:secondaryTouchBarDeleteIdentifier
+                                                                      image:[MPIconHelper icon:MPIconTrash]
+                                                                      color:NSColor.systemRedColor
+                                                                     target:self
+                                                                   selector:@selector(delete:)
+                                                         customizationLabel:NSLocalizedString(@"TOUCHBAR_DELETE","Touchbar button label for deleting elements")];
+  }
+  else {
+    return nil;
+  }
+}
+
+- (void)focusSearchField {
+  [self.window makeFirstResponder:self.searchField];
 }
 
 @end

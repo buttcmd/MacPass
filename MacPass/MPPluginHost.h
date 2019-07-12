@@ -22,20 +22,45 @@
 
 #import <Foundation/Foundation.h>
 
-FOUNDATION_EXPORT NSString *const MPPluginHostWillLoadPlugin;
-FOUNDATION_EXPORT NSString *const MPPluginHostDidLoadPlugin;
+/* Notifications for loading plugins */
+FOUNDATION_EXPORT NSString *const MPPluginHostWillLoadPluginNotification;
+FOUNDATION_EXPORT NSString *const MPPluginHostDidLoadPluginNotification;
 
+/* Keys used in info dictionary on notifications */
 FOUNDATION_EXPORT NSString *const MPPluginHostPluginBundleIdentifiyerKey;
 
 @class MPPlugin;
+@class KPKEntry;
+@protocol MPImportPlugin;
+@protocol MPAutotypeWindowTitleResolverPlugin;
 
 @interface MPPluginHost : NSObject
 
+/* List of all plugins known to the plugin manager. Disabled plugins are also present! */
 @property (readonly, copy) NSArray <MPPlugin __kindof*> *plugins;
-@property (nonatomic, readonly) BOOL loadUnsecurePlugins;
+@property (nonatomic, readonly, copy) NSString *version;
 
 + (instancetype)sharedHost;
 
 - (instancetype)init NS_UNAVAILABLE;
+
+- (BOOL)installPluginAtURL:(NSURL *)url error:(NSError *__autoreleasing *)error;
+- (BOOL)uninstallPlugin:(MPPlugin *)plugin error:(NSError *__autoreleasing *)error;
+- (void)disablePlugin:(MPPlugin *)plugin;
+- (void)enablePlugin:(MPPlugin *)plugin;
+
+- (MPPlugin *)pluginWithBundleIdentifier:(NSString *)identifer;
+- (NSArray *)avilableMenuItemsForEntries:(NSArray <KPKEntry *>*)entries;
+@end
+
+@interface MPPluginHost (MPImportPluginSupport)
+
+@property (readonly, copy) NSArray <MPPlugin<MPImportPlugin> __kindof*> *importPlugins;
+
+@end
+
+@interface MPPluginHost (MPWindowTitleResolverSupport)
+
+- (NSArray<MPPlugin<MPAutotypeWindowTitleResolverPlugin> __kindof*> *)windowTitleResolverForRunningApplication:(NSRunningApplication *)runningApplication;
 
 @end

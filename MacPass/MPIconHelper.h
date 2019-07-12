@@ -109,6 +109,7 @@ typedef NS_ENUM(NSUInteger, MPIconType) {
   MPIconContextTriangle,
   MPIconExpiredEntry,
   MPIconExpiredGroup,
+  MPIconKeyboard
 };
 
 /**
@@ -142,5 +143,7 @@ typedef NS_ENUM(NSUInteger, MPIconType) {
  *	@return	Array of MPIconType as NSNumber objects
  */
 + (NSArray *)databaseIconTypes;
+
++ (void)fetchIconDataForURL:(NSURL *)url completionHandler:(void (^)(NSData *iconData))handler;
 
 @end
